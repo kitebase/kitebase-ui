@@ -16,6 +16,8 @@
  *       pick's `then` is applied with these same rules
  *   {action: 'endpoint', op, params, confirm?}                   → another call,
  *       whose answer is applied with these same rules
+ *   {action: 'download', op, params}                             → a file: the
+ *       call goes to the download route, and the browser saves what comes back
  *   {action: 'set_query_params', params}                         → keys the view
  *       carries on every query from now on
  *
@@ -93,6 +95,14 @@ async function applyBody(body: Payload, ctx: ResultContext, fallback?: string): 
       if (confirmText && !(await msgbox.confirm(confirmText, ctx.title))) return;
       const res = await api.endpoint(body.op, (body.params ?? {}) as Payload);
       await applyResult(res, ctx);
+      return;
+    }
+
+    case 'download': {
+      if (typeof body.op !== 'string') return;
+      const res = await api.download(body.op, (body.params ?? {}) as Payload);
+      // Saved is its own report: a box saying so would be one click too many.
+      if (res.status === 'error') await applyResult(res, ctx);
       return;
     }
 

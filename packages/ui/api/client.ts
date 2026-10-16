@@ -15,9 +15,13 @@ import { config } from '../config';
 import { statusBar } from '../status/statusBar.svelte';
 import type { LoginCredentials, AuthResponse, APIResponse, ContextUpdate } from './types';
 import type { ClientInfo } from '../auth/host';
+import { filenameOf } from './disposition';
 
 const TOKEN_KEY = 'kitebase_token';
 const TIMEOUT = 10000;
+// A file is built while the request waits: an export at its ceiling takes
+// seconds, not the fraction of a second a query does.
+const DOWNLOAD_TIMEOUT = 120000;
 // auth/token is asked by the host's cookie, and answers 401 when there is no
 // session: that is an answer for whoever asked, not an expired session.
 const HOST_TOKEN_ROUTE = '/auth/token';
@@ -212,6 +216,62 @@ class KitebaseAPI {
     } catch (err: any) {
       return { status: 'error', message: err.response?.data?.message ?? 'Request failed' };
     }
+  }
+
+  // ── Files — POST /download/{operation} ────────────────────────────────────
+  //
+  // An operation whose answer is a file. Same endpoints and token as the
+  // dispatcher; the bytes arrive as a blob and the browser saves them, or
+  // opens them in a tab when the server says `inline` (a PDF to preview).
+  // Nothing is kept: the blob URL is released once the browser has it.
+  //
+  //   api.download('export_file', { query, ids, columns, format: 'xlsx' })
+
+  async download(operation: string, data: unknown = {}): Promise<APIResponse<null>> {
+    try {
+      const res = await this.client.post<Blob>(`/download/${operation}`, data, {
+        responseType: 'blob',
+        timeout: DOWNLOAD_TIMEOUT,
+      });
+      const header = String(res.headers['content-disposition'] ?? '');
+      deliver(res.data, filenameOf(header) ?? operation, header.startsWith('inline'));
+      return { status: 'success', data: null };
+    } catch (err: any) {
+      // A refusal comes back as JSON, read here as a blob like the file would be.
+      const d = await jsonOf(err.response?.data);
+      return {
+        status: 'error',
+        message: d?.message ?? 'Request failed',
+        error_type: d?.error_type,
+        traceback: d?.traceback,
+      };
+    }
+  }
+}
+
+function deliver(blob: Blob, filename: string, inline: boolean): void {
+  if (typeof window === 'undefined') return;
+  const url = URL.createObjectURL(blob);
+  if (inline) {
+    window.open(url, '_blank');
+  } else {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+  // Released later rather than at once: the browser reads the URL after the
+  // click returns, and an opened tab needs it to load.
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
+async function jsonOf(body: unknown): Promise<any> {
+  try {
+    return body instanceof Blob ? JSON.parse(await body.text()) : body;
+  } catch {
+    return null;
   }
 }
 

@@ -113,6 +113,8 @@
   export function clearHeaderFilter()              { kbTable?.clearHeaderFilter(); }
   export function clearSort()                      { kbTable?.clearSort(); }
   export function getSelectedData(): any[]         { return kbTable?.getSelectedData() ?? []; }
+  export function getActiveData(ticked = false): any[] { return kbTable?.getActiveData(ticked) ?? []; }
+  export function getVisibleColumns(): Array<{ field: string; title: string }> { return kbTable?.getVisibleColumns() ?? []; }
   export function getHeaderFilters(): any[]        { return kbTable?.getHeaderFilters() ?? []; }
   export function setHeaderFilter(field: string, value: unknown) { kbTable?.setHeaderFilter(field, value); }
   export function getSorters(): Array<{ field: string; dir: string }> { return kbTable?.getSorters() ?? []; }

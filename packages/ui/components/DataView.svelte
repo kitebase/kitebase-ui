@@ -16,7 +16,8 @@
    *   onEvent  (name, data) => void      unified event emitter (row_click, data_load, …)
    */
   import { untrack, getContext } from 'svelte';
-  import { _ } from '../i18n';
+  import { _, _t } from '../i18n';
+  import { visibleButtons } from './navigator.visibility';
   import DataViewNavigator from './DataViewNavigator.svelte';
   import DataViewTable from './DataViewTable.svelte';
   import DataFormView from './DataFormView.svelte';
@@ -569,19 +570,74 @@
     _activeRowData = null;
   });
 
-  // ── Toolbar / export actions ───────────────────────────────────────────────
+  // ── Export ─────────────────────────────────────────────────────────────────
+  // F7 runs it only where the button is there to be seen.
+  const exportShown = $derived(visibleButtons(navigatorConfig).has('export'));
 
-  // The CSV of what the grid holds is opt-in (`show: [export]`): the export
-  // worth having — ticked rows, richer columns, xlsx — is the server's to do.
-  const exportShown = $derived(
-    (navigatorConfig?.show ?? []).includes('export')
-    && !(navigatorConfig?.hide ?? []).includes('export'),
-  );
+  /**
+   * The rows an operation on "what you see" works on, as ids in the order on
+   * screen: the ticked ones, or with none ticked the rows past the column
+   * filters. A list not fully loaded asks first whether the loaded rows will
+   * do; "all" goes through Load all, so the column filters and the order apply
+   * to the rows that arrive. null when the person cancels.
+   */
+  async function collectViewIds(title: string): Promise<unknown[] | null> {
+    const ticked = tableRef?.getActiveData(true) ?? [];
+    if (ticked.length > 0) return ticked.map((r) => r[pkField]);
 
-  function handleExport() {
+    if (hasMore && totalCount !== null) {
+      const total = totalCount;
+      const choice = await msgbox.choose([
+        { label: _t('The {n} loaded', { n: rowCount }), value: 'loaded' },
+        { label: _t('All {n}', { n: total }), value: 'all' },
+      ], title, _t('The list shows {n} of {total} rows.', { n: rowCount, total }));
+      if (choice === undefined) return null;
+      if (choice === 'all') {
+        // Refused before loading: the server would refuse after.
+        const limit = serverConfig.config?.export_max_rows as number | undefined;
+        if (limit !== undefined && total > limit) {
+          await msgbox.alert(_t('{n} rows are more than the {limit} an export can hold: narrow the selection',
+                                { n: total, limit }), title);
+          return null;
+        }
+        await loadMore(0);
+      }
+    }
+    return (tableRef?.getActiveData() ?? []).map((r) => r[pkField]);
+  }
+
+  /**
+   * The server builds the file: the rows are re-read with the view's query,
+   * and the columns are the grid's as they are on screen — order, titles, the
+   * ones the person hid left out. A view with no table behind it (an endpoint,
+   * a buffer) has nothing to re-read, and exports what the grid holds.
+   */
+  async function handleExport() {
     if (!exportShown) return;
-    const name = (view.source?.model ?? view.title ?? 'export').toLowerCase();
-    tableRef?.download('csv', `${name}.csv`);
+    const title = _('Export');
+    const src = view.source;
+    if (!src?.model || view.type === 'tree') {
+      const name = (src?.model ?? view.title ?? 'export').toLowerCase();
+      tableRef?.download('csv', `${name}.csv`);
+      return;
+    }
+
+    const ids = await collectViewIds(title);
+    if (ids === null) return;
+    if (ids.length === 0) { await msgbox.alert(_('No rows to export'), title); return; }
+
+    const byKey = new Map((view.columns ?? []).map((c) => [extractFieldKey(c.field), c.field]));
+    const columns = (tableRef?.getVisibleColumns() ?? [])
+      .filter((c) => byKey.has(c.field))
+      .map((c) => ({ field: byKey.get(c.field)!, title: c.title }));
+
+    const query = buildQuery(src, view.columns, trigger ?? {}, { ...queryExtras, pk: pkField });
+    try {
+      const res = await api.endpoint('export', { query, ids, columns });
+      await applyResult(res, { title, stack, setQueryParams, refreshRows, reload: reloadData });
+    } catch (e) {
+      await msgbox.error(e instanceof Error ? e.message : String(e), undefined, title);
+    }
   }
 
   /** Whether the view differs from how it opens — what "Reset view" would undo. */

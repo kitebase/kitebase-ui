@@ -21,6 +21,7 @@
     ChevronDown, SquareCheckBig, Zap,
   } from 'lucide-svelte';
   import type { NavigatorConfig, CommandItem } from './dataview.types';
+  import { visibleButtons } from './navigator.visibility';
   import { resolveIcon } from './icons';
   import { _, _t } from '../i18n';
 
@@ -100,25 +101,7 @@
 
   const mode = $derived(config?.mode ?? 'browser');
 
-  // Default visible buttons per mode. `export` is in none of them: the CSV of
-  // what the grid holds is opt-in (`show: [export]`) while the real export —
-  // ticked rows, richer columns, xlsx — waits for the server.
-  const MODE_DEFAULTS: Record<string, Set<string>> = {
-    browser:  new Set(['add', 'edit', 'delete', 'select', 'filter', 'search']),
-    lookup:   new Set(['add', 'edit', 'delete', 'accept', 'cancel', 'filter', 'search']),
-    batch:    new Set(['edit', 'accept', 'cancel', 'select', 'filter']),
-    // The rows are a buffer, not a set the user chose: nothing to search or
-    // re-query, and the count is what the grid already shows.
-    buffered: new Set(['add', 'edit', 'delete']),
-    readonly: new Set(['filter', 'search']),
-  };
-
-  const visibleSet = $derived.by(() => {
-    const base = new Set(MODE_DEFAULTS[mode] ?? MODE_DEFAULTS.browser);
-    for (const id of config?.show ?? []) base.add(id);
-    for (const id of config?.hide ?? []) base.delete(id);
-    return base;
-  });
+  const visibleSet = $derived(visibleButtons(config));
 
   function isVisible(id: string): boolean {
     return visibleSet.has(id);
@@ -337,7 +320,7 @@
 
     <!-- Export -->
     {#if isVisible('export')}
-      <button class="kb-nav-btn" title={_('Export CSV (F7)')} onclick={onExport}>
+      <button class="kb-nav-btn" title={_('Export (F7)')} onclick={onExport}>
         <Download size={14} />
       </button>
     {/if}

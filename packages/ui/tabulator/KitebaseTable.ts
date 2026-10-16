@@ -497,6 +497,22 @@ export class KitebaseTable {
   getSelectedData(): any[] {
     return this.table?.getSelectedData() ?? [];
   }
+  /**
+   * The rows as the grid shows them: past the column filters, in the order on
+   * screen. With `ticked`, only the ticked ones, still in that order (the
+   * selection itself is kept in the order rows were ticked).
+   */
+  getActiveData(ticked = false): any[] {
+    const rows: any[] = this.table?.getRows('active') ?? [];
+    return (ticked ? rows.filter((r: any) => r.isSelected()) : rows).map((r: any) => r.getData());
+  }
+  /** The visible data columns, in the order on screen, with the title shown. */
+  getVisibleColumns(): Array<{ field: string; title: string }> {
+    const columns: any[] = this.table?.getColumns() ?? [];
+    return columns
+      .filter((c: any) => c.isVisible() && c.getField())
+      .map((c: any) => ({ field: c.getField(), title: String(c.getDefinition().title ?? c.getField()) }));
+  }
   redraw(force = false) {
     if (this._tableReady) this.table?.redraw(force);
   }

@@ -68,6 +68,8 @@
   export function getHeaderFilters(): any[]                                    { return tableRef?.getHeaderFilters() ?? []; }
   export function getSorters(): Array<{ field: string; dir: string }>          { return tableRef?.getSorters() ?? []; }
   export function getSelectedData(): any[]                                     { return tableRef?.getSelectedData() ?? []; }
+  export function getActiveData(ticked = false): any[]                         { return tableRef?.getActiveData(ticked) ?? []; }
+  export function getVisibleColumns(): Array<{ field: string; title: string }> { return tableRef?.getVisibleColumns() ?? []; }
   export function clearHeaderFilter()                                          { tableRef?.clearHeaderFilter(); }
   export function setHeaderFilter(field: string, value: unknown)               { tableRef?.setHeaderFilter(field, value); }
   export function setSort(sorters: Array<{ field: string; dir: string }>)      { tableRef?.setSort(sorters); }
