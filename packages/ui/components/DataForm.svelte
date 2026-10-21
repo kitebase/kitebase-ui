@@ -292,6 +292,9 @@
   function resolveWidget(field: FormField): string {
     if (field.widget) return field.widget as string;
     if (field.foreign_key) return 'fk';
+    // Declared choices are a pick list whatever the type: a String with choices
+    // is not free text.
+    if (field.choices && field.choices.length > 0) return 'combobox';
 
     const schemaField = resolvedSchema?.[field.name];
     const effectiveType = (schemaField?.type ?? field.type) as string | undefined;
@@ -309,7 +312,6 @@
     if (t === 'time') return 'time';
     if (t === 'longstr' || t === 'text') return 'textarea';
     if (t === 'int' || t === 'float' || t === 'decimal' || t === 'number') return 'number';
-    if (field.choices && field.choices.length > 0) return 'combobox';
     return 'text';
   }
 
