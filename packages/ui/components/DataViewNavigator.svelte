@@ -21,6 +21,7 @@
     ChevronDown, SquareCheckBig, Zap,
   } from 'lucide-svelte';
   import type { NavigatorConfig, CommandItem } from './dataview.types';
+  import { commandLabel } from './dataview.types';
   import { visibleButtons } from './navigator.visibility';
   import { resolveIcon } from './icons';
   import { _, _t } from '../i18n';
@@ -122,7 +123,8 @@
 
   /** The label with its key, the way the menu teaches it: "Archive (A)". */
   function cmdLabel(cmd: CommandItem): string {
-    return cmd.key ? `${cmd.label} (${String(cmd.key).toUpperCase()})` : cmd.label;
+    const name = commandLabel(cmd);
+    return cmd.key ? `${name} (${String(cmd.key).toUpperCase()})` : name;
   }
 
   // ── Row-active state ───────────────────────────────────────────────────────
@@ -254,17 +256,23 @@
       </div>
     {/if}
 
-    <!-- Promoted commands (toolbar: true) -->
+    <!-- Promoted commands (toolbar: true): an icon alone, like the buttons
+         beside it, named by the tooltip; the label shows only without one. -->
     {#each toolbarCmds as cmd (cmd.id)}
-      {@const Icon = resolveIcon(cmd.icon) ?? Ellipsis}
+      {@const Icon = resolveIcon(cmd.icon)}
       <button
         class="kb-nav-btn"
         title={cmdLabel(cmd)}
+        aria-label={commandLabel(cmd)}
         disabled={cmdDisabled(cmd)}
         onclick={() => onCommand?.(cmd)}
       >
-        <Icon size={14} />
-        <span class="kb-nav-label">{cmd.label}</span>
+        {#if Icon}
+          <Icon size={14} />
+        {:else}
+          <Ellipsis size={14} />
+          <span class="kb-nav-label">{commandLabel(cmd)}</span>
+        {/if}
       </button>
     {/each}
 

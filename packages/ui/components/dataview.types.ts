@@ -65,7 +65,8 @@ export interface ViewTreeConfig {
 
 export interface CommandItem {
   id: string;
-  label: string;
+  /** What the command is called; default its id as words: `print_balance` is "Print balance". */
+  label?: string;
   icon?: string;       // lucide name, for a promoted button
   scope?: 'row' | 'selection' | 'global';
   /**
@@ -76,6 +77,8 @@ export interface CommandItem {
   /** One key that runs it while the grid has the focus — shown as "(A)". */
   key?: string;
   endpoint?: string;   // endpoint to call when activated
+  /** `view`: the call also carries the rows on screen, in order, as `view_ids`. */
+  rows?: 'view';
   params?: Record<string, unknown>;  // sent along with the view's context
   [key: string]: unknown;
 }
@@ -115,4 +118,11 @@ export interface ViewDescriptor {
   allow_views?: string[];
   data_schema?: string;  // schema ID from plugin schemas: section
   [key: string]: unknown;
+}
+
+/** The name of a command: its label, or its id as words, capitalised. */
+export function commandLabel(cmd: CommandItem): string {
+  if (cmd.label) return cmd.label;
+  const words = cmd.id.replace(/_+/g, ' ').trim();
+  return words.charAt(0).toUpperCase() + words.slice(1);
 }

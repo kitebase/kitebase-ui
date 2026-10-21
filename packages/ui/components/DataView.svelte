@@ -54,6 +54,7 @@
   } from './dataview.types';
 
   import type { ViewDescriptor, NavigatorConfig, CommandItem } from './dataview.types';
+  import { commandLabel } from './dataview.types';
 
   // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -900,18 +901,21 @@
     };
     if (activeId != null) payload.id = activeId;
     if (selectedIds.length > 0) payload.ids = selectedIds;
+    // The rows on screen, past the column filters and in the grid's order:
+    // only for a command that declares it wants them (a print of "what you see").
+    if (cmd.rows === 'view') payload.view_ids = (tableRef?.getActiveData() ?? []).map((r: any) => r[pkField]);
 
     try {
       const res = await api.endpoint(cmd.endpoint, payload);
       await applyResult(res, {
-        title: cmd.label,
+        title: commandLabel(cmd),
         stack,
         setQueryParams,
         refreshRows,
         reload: reloadData,
       });
     } catch (e) {
-      await msgbox.error(e instanceof Error ? e.message : String(e), undefined, cmd.label);
+      await msgbox.error(e instanceof Error ? e.message : String(e), undefined, commandLabel(cmd));
     }
   }
 
