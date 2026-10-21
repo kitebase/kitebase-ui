@@ -22,6 +22,8 @@
   import { lookupPageId, filterConditions, filterRules } from '../lookup';
 
   const stack = getContext<StackInstance>('kb:stack') ?? globalStack;
+  // A dialog has no stack to open the picker on: there the list is the only way.
+  const canPush = getContext<boolean | undefined>('kb:can-push') !== false;
 
   interface Props {
     value: unknown;
@@ -176,8 +178,8 @@
     onblur?.();
   }
 
-  // Total navigable items: options + "Search more…"
-  function totalItems() { return options.length + 1; }
+  // Total navigable items: options + "Search more…", where it can open
+  function totalItems() { return options.length + (canPush ? 1 : 0); }
 
   function scrollHighlightedIntoView() {
     if (!listEl || highlighted < 0) return;
@@ -252,7 +254,7 @@
 
     if (e.key === 'Enter') {
       e.preventDefault();
-      if (highlighted === options.length) {
+      if (canPush && highlighted === options.length) {
         // "Search more…" is highlighted
         openPicker();
       } else if (highlighted >= 0 && highlighted < options.length) {
@@ -273,7 +275,7 @@
 
   function openPicker() {
     open = false;
-    if (!fkTarget) return;
+    if (!fkTarget || !canPush) return;
     // Snapshot derived values at push time — closures must not access $derived inside async.
     const _table   = fkTarget;
     const _pkField = fkPkField;
@@ -385,6 +387,7 @@
         </ul>
 
         <!-- Search more… -->
+        {#if canPush}
         <div style="border-top: 1px solid var(--kb-border-subtle, var(--kb-border))">
           <!-- svelte-ignore a11y_click_events_have_key_events -->
           <div
@@ -399,6 +402,7 @@
             {_('Search more…')}
           </div>
         </div>
+        {/if}
       </div>
     {/if}
   </div>

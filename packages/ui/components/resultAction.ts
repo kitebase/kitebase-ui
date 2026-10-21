@@ -18,6 +18,10 @@
  *       whose answer is applied with these same rules
  *   {action: 'download', op, params}                             → a file: the
  *       call goes to the download route, and the browser saves what comes back
+ *   {action: 'form', view, values?, title?, then}                → a form to fill:
+ *       a page on the stack, or a dialog when the view says `presentation:
+ *       dialog`; its values are merged into `then.params`, and `then` is
+ *       applied with these same rules. Cancel ends the chain
  *   {action: 'set_query_params', params}                         → keys the view
  *       carries on every query from now on
  *
@@ -32,6 +36,9 @@ import { api } from '../api/client';
 import { msgbox } from './msgbox.svelte';
 import { _ } from '../i18n';
 import PanelPage from './PanelPage.svelte';
+import FormStepPage from './FormStepPage.svelte';
+import { formDialog } from './formDialog.svelte';
+import type { FormDescriptor } from './dataform.types';
 import type { StackInstance } from '$kitebase/stack/stack.svelte';
 
 export interface ResultContext {
@@ -103,6 +110,21 @@ async function applyBody(body: Payload, ctx: ResultContext, fallback?: string): 
       const res = await api.download(body.op, (body.params ?? {}) as Payload);
       // Saved is its own report: a box saying so would be one click too many.
       if (res.status === 'error') await applyResult(res, ctx);
+      return;
+    }
+
+    case 'form': {
+      const view = body.view as FormDescriptor | undefined;
+      const then = body.then as Payload | undefined;
+      if (!view || !then) return;
+      const values = (body.values ?? {}) as Payload;
+      const title = (body.title as string | undefined) ?? ctx.title;
+      const answer = view.presentation === 'dialog'
+        ? await formDialog.open(view, values, title)
+        : await new Promise<unknown>((resolve) =>
+            ctx.stack.push(FormStepPage, { view, values, title }, resolve));
+      if (!answer || typeof answer !== 'object') return;
+      await applyBody({ ...then, params: { ...((then.params ?? {}) as Payload), ...(answer as Payload) } }, ctx);
       return;
     }
 

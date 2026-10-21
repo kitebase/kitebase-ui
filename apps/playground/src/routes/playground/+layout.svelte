@@ -5,6 +5,7 @@
   import { setPluginLoader } from '$kitebase/plugins/context';
   import { pluginLoader } from '$app-plugins/registry';
   import MessageBox from '$kitebase/components/MessageBox.svelte';
+  import FormDialog from '$kitebase/components/FormDialog.svelte';
   import '$app-plugins/formatters';
 
   setPluginLoader(pluginLoader);
@@ -36,5 +37,6 @@
 </div>
 <!-- The lab asks the same questions the app does — a dialog with nobody to render
      it would leave the caller waiting for an answer that never comes. -->
+<FormDialog />
 <MessageBox />
 {/if}

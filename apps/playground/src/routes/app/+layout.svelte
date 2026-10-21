@@ -4,6 +4,7 @@
   import { serverConfig } from '$kitebase/api/serverConfig.svelte';
   import { loadLocale } from '$kitebase/i18n';
   import MessageBox from '$kitebase/components/MessageBox.svelte';
+  import FormDialog from '$kitebase/components/FormDialog.svelte';
   import Chrome from '$kitebase/chrome/Chrome.svelte';
   import { setPluginLoader } from '$kitebase/plugins/context';
   import { pluginLoader } from '$app-plugins/registry';
@@ -29,6 +30,7 @@
   });
 </script>
 
+<FormDialog />
 <MessageBox />
 
 {#if ready}

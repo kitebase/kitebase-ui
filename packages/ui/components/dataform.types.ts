@@ -214,6 +214,12 @@ export type LayoutNode =
 export interface FormDescriptor {
   type: 'form';
   title?: string;
+  /**
+   * Where a form asked for by an operation opens (the `form` step of
+   * `applyResult`): a page on the stack, the default, or a dialog. A dialog
+   * has no stack, so its lookups keep the list and lose "Search more…".
+   */
+  presentation?: 'page' | 'dialog';
   source?: FormSource;
   fields?: FormFieldEntry[];   // legacy flat list (backward compat)
   layout?: LayoutNode[];       // new layout engine — takes precedence over fields
