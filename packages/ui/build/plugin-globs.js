@@ -9,7 +9,11 @@
  *   import { pluginGlobs, formatterGlobs } from 'virtual:kitebase/plugins';
  *
  * The roots are exposed to the patterns as the aliases $plugins0…$pluginsN,
- * declared by the Kit config from the same resolved app (see kit.js).
+ * declared by the Kit config from the same resolved app (see kit.js). A root
+ * taken in part (`include:`) is globbed only under the plugins selected from it,
+ * so what the backend leaves out does not reach the client either: a
+ * formatters.ts of an excluded plugin would otherwise run. A whole root leaves
+ * out the partial roots nested in it, which have globs of their own.
  */
 const VIRTUAL_ID = 'virtual:kitebase/plugins';
 const RESOLVED_ID = '\0' + VIRTUAL_ID;
@@ -19,7 +23,16 @@ export function kitebasePluginGlobs(app) {
   /** @param {string} pattern @param {string} [options] */
   const globs = (pattern, options = '') =>
     app.pluginRoots
-      .map((_, i) => `import.meta.glob('$plugins${i}/${pattern}'${options})`)
+      .map((_, i) => {
+        const dirs = app.pluginSelection[i];
+        if (dirs === null) {
+          const skip = app.pluginSkip[i].map((d) => `, '!$plugins${i}/${d}/**'`).join('');
+          return `import.meta.glob(['$plugins${i}/${pattern}'${skip}]${options})`;
+        }
+        if (!dirs.length) return '{}';
+        const patterns = dirs.map((d) => `'$plugins${i}/${d}/${pattern}'`).join(', ');
+        return `import.meta.glob([${patterns}]${options})`;
+      })
       .join(',\n  ');
 
   return {
