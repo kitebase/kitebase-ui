@@ -9,6 +9,10 @@ describe('lookup page', () => {
   it('is the page the field declares', () => {
     expect(lookupPageId({ lookup: { page: 'utente_attivi' } }, 'Utente')).toBe('utente_attivi');
   });
+
+  it('is none when the field says so', () => {
+    expect(lookupPageId({ lookup: { page: false } }, 'Utente')).toBeNull();
+  });
 });
 
 describe('picker view', () => {

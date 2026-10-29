@@ -38,6 +38,9 @@
   let { value, onchange, onblur, readonly = false, field, filters = {} }: Props = $props();
 
   let fkTarget  = $derived((field.foreign_key as { target?: string; field?: string } | undefined)?.target);
+  // The picker's page; null when there is none for this user (`lookup.page: false`)
+  let pickerPage = $derived(fkTarget ? lookupPageId(field, fkTarget) : null);
+  let canSearchMore = $derived(canPush && pickerPage !== null);
   let fkPkField = $derived((field.foreign_key as { target?: string; field?: string } | undefined)?.field ?? 'id');
 
   let displayField = $derived(fkTarget ? serverConfig.tables[fkTarget]?.display_field : undefined);
@@ -179,7 +182,7 @@
   }
 
   // Total navigable items: options + "Search more…", where it can open
-  function totalItems() { return options.length + (canPush ? 1 : 0); }
+  function totalItems() { return options.length + (canSearchMore ? 1 : 0); }
 
   function scrollHighlightedIntoView() {
     if (!listEl || highlighted < 0) return;
@@ -254,7 +257,7 @@
 
     if (e.key === 'Enter') {
       e.preventDefault();
-      if (canPush && highlighted === options.length) {
+      if (canSearchMore && highlighted === options.length) {
         // "Search more…" is highlighted
         openPicker();
       } else if (highlighted >= 0 && highlighted < options.length) {
@@ -275,14 +278,15 @@
 
   function openPicker() {
     open = false;
-    if (!fkTarget || !canPush) return;
+    if (!fkTarget || !pickerPage || !canSearchMore) return;
     // Snapshot derived values at push time — closures must not access $derived inside async.
     const _table   = fkTarget;
+    const _page    = pickerPage;
     const _pkField = fkPkField;
     const _df      = displayField;
     stack.push(
       FKPickerView,
-      { table: _table, page: lookupPageId(field, _table), rules: filterRules(filters),
+      { table: _table, page: _page, rules: filterRules(filters),
         current: value, title: field.label ?? _table },
       (row: unknown) => {
         if (!row || typeof row !== 'object') return;
@@ -387,7 +391,7 @@
         </ul>
 
         <!-- Search more… -->
-        {#if canPush}
+        {#if canSearchMore}
         <div style="border-top: 1px solid var(--kb-border-subtle, var(--kb-border))">
           <!-- svelte-ignore a11y_click_events_have_key_events -->
           <div

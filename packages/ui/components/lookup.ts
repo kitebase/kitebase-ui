@@ -4,13 +4,16 @@
  * The page is declared (`lookup.page` on the field) or it is the list of the
  * target table, `{table}_list` in lower case like `{model}_form`. There is no
  * `_lookup` naming convention: a dedicated page is named, not guessed.
+ * `lookup.page: false` means there is none, and the server sets it when the
+ * user may not open the page: the drop-down stays, "Search more…" goes.
  */
 import type { ViewDescriptor } from './dataview.types';
 import type { RuleRow } from './dataview.rules';
 import { resolveRecordTokens } from './record';
 
-export function lookupPageId(field: object, table: string): string {
+export function lookupPageId(field: object, table: string): string | null {
   const lookup = (field as { lookup?: { page?: unknown } }).lookup;
+  if (lookup?.page === false) return null;
   return typeof lookup?.page === 'string' && lookup.page
     ? lookup.page
     : `${table.toLowerCase()}_list`;
