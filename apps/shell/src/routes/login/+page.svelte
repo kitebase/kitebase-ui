@@ -4,6 +4,10 @@
   import { base } from '$app/paths';
   import { authStore } from '$kitebase/auth/store.svelte';
 
+  // The app's name and texts, from /info: readable before signing in.
+  const title = $derived(authStore.client?.title || 'Kitebase');
+  const signin = $derived(authStore.client?.signin ?? {});
+
   let username = $state('');
   let password = $state('');
 
@@ -27,7 +31,10 @@
 {#if showForm}
   <div class="flex min-h-screen items-center justify-center bg-gray-50">
     <div class="w-full max-w-sm rounded-lg border border-gray-200 bg-white p-8 shadow-sm">
-      <h1 class="mb-6 text-2xl font-semibold text-gray-900">Kitebase</h1>
+      <h1 class="text-2xl font-semibold text-gray-900" class:mb-6={!signin.subtitle}>{title}</h1>
+      {#if signin.subtitle}
+        <p class="mb-6 text-sm text-gray-500">{signin.subtitle}</p>
+      {/if}
 
       <form onsubmit={handleSubmit} class="space-y-4">
         <div>
@@ -66,6 +73,10 @@
           {authStore.isLoading ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
+
+      {#if signin.hint}
+        <p class="mt-6 rounded-md bg-gray-50 px-3 py-2 text-xs text-gray-500">{signin.hint}</p>
+      {/if}
     </div>
   </div>
 {/if}

@@ -15,6 +15,9 @@ export interface ClientInfo {
   base: string;
   login: string | null;
   logout: string | null;
+  /** The app's name (`title` in config.yaml), and what its own login page shows. */
+  title?: string | null;
+  signin?: { subtitle?: string; hint?: string };
 }
 
 /**
