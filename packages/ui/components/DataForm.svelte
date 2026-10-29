@@ -28,6 +28,8 @@
   import WidgetBoolean from './widgets/WidgetBoolean.svelte';
   import WidgetCombobox from './widgets/WidgetCombobox.svelte';
   import WidgetFKCombobox from './widgets/WidgetFKCombobox.svelte';
+  import WidgetJson from './widgets/WidgetJson.svelte';
+  import WidgetChecklist from './widgets/WidgetChecklist.svelte';
   import FieldHelp from './widgets/FieldHelp.svelte';
   import { _ } from '../i18n';
   import { serverConfig } from '../api/serverConfig.svelte';
@@ -341,9 +343,26 @@
     draft[name] = value;
   }
 
+  // What a widget holds that is not a value yet (JSON that does not parse):
+  // the widget says so, and the field stays in error until it is corrected.
+  let widgetErrors = $state<Record<string, string>>({});
+
+  function widgetInvalid(name: string, message: string | null) {
+    if (message) widgetErrors[name] = message;
+    else if (name in widgetErrors) {
+      const { [name]: _dropped, ...rest } = widgetErrors;
+      widgetErrors = rest;
+    }
+  }
+
   function validateField(name: string): boolean {
     const field = flatFields.find((f) => f.name === name);
     if (!field) return true;
+
+    if (widgetErrors[name]) {
+      errors[name] = widgetErrors[name];
+      return false;
+    }
 
     const value = draft[name];
     const isEmpty = value === null || value === undefined || value === '';
@@ -1104,6 +1123,23 @@
         readonly={fieldReadonly}
         {field}
         filters={lookupFilters(field, draft)}
+      />
+    {:else if widgetType === 'json'}
+      <WidgetJson
+        value={draft[field.name]}
+        onchange={(v) => patch(field.name, v)}
+        onblur={() => validateField(field.name)}
+        oninvalid={(m) => widgetInvalid(field.name, m)}
+        readonly={fieldReadonly}
+        {field}
+      />
+    {:else if widgetType === 'checklist'}
+      <WidgetChecklist
+        value={draft[field.name]}
+        onchange={(v) => patch(field.name, v)}
+        onblur={() => validateField(field.name)}
+        readonly={fieldReadonly}
+        {field}
       />
     {:else}
       <WidgetText
