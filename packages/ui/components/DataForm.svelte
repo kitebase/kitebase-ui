@@ -30,6 +30,8 @@
   import WidgetFKCombobox from './widgets/WidgetFKCombobox.svelte';
   import WidgetJson from './widgets/WidgetJson.svelte';
   import WidgetChecklist from './widgets/WidgetChecklist.svelte';
+  import PluginComponent from './PluginComponent.svelte';
+  import { getPluginLoader } from '$kitebase/plugins/context';
   import FieldHelp from './widgets/FieldHelp.svelte';
   import { _ } from '../i18n';
   import { serverConfig } from '../api/serverConfig.svelte';
@@ -107,6 +109,9 @@
     onSave,
     onCancel
   }: Props = $props();
+
+  // Where a plugin widget (`widget: acl.access`) is found.
+  const pluginLoader = getPluginLoader();
 
   // ── Schema resolution ─────────────────────────────────────────────────────
 
@@ -1131,6 +1136,20 @@
         onblur={() => validateField(field.name)}
         oninvalid={(m) => widgetInvalid(field.name, m)}
         readonly={fieldReadonly}
+        {field}
+      />
+    {:else if widgetType.includes('.') && pluginLoader}
+      <!-- A widget with a dot is a plugin's (`acl.access`), found as the
+           components of `type: plugin` pages are. It gets the whole draft too:
+           a plugin widget may show what other fields make of this one. -->
+      <PluginComponent
+        loader={pluginLoader}
+        componentId={widgetType}
+        value={draft[field.name]}
+        onchange={(v: unknown) => patch(field.name, v)}
+        onblur={() => validateField(field.name)}
+        readonly={fieldReadonly}
+        record={draft}
         {field}
       />
     {:else if widgetType === 'checklist'}

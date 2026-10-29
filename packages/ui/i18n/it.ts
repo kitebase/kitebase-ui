@@ -5,6 +5,12 @@ registerTranslations('it', {
   'is required':              'è obbligatorio',
   'Invalid numeric value':    'Valore numerico non valido',
   'Implausible year':         'Anno non plausibile',
+  'Not valid JSON':           'JSON non valido',
+
+  // checklist
+  'from':                     'da',
+  'Unknown':                  'Sconosciuti',
+  'The choices could not be loaded': 'Non è stato possibile caricare le scelte',
   'Invalid time: 930, 9.30, 9:30': 'Ora non valida: 930, 9.30, 9:30',
   'time':                     'ora',
 
