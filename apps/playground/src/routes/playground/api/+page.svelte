@@ -59,11 +59,6 @@
     add('Query — Active Users (POST /endpoint/query)', res.status, res.data ?? res.message);
   }
 
-  async function testReadFile() {
-    const res = await api.endpoint('read_file', { file_path: 'hello.yaml', base_dir: 'data' });
-    add('Read File (POST /endpoint/read_file)', res.status, res.data ?? res.message);
-  }
-
   async function testCRUD() {
     const username_test = `test_${Date.now()}`;
     interface UserRecord { id: number; username: string; password?: string; email: string; is_active: boolean; is_admin: boolean; }
@@ -187,13 +182,6 @@
       class="rounded bg-cyan-600 px-3 py-1.5 text-sm text-white hover:bg-cyan-700 disabled:opacity-40"
     >
       Query Active Users
-    </button>
-    <button
-      onclick={testReadFile}
-      disabled={!authStore.isAuthenticated}
-      class="rounded bg-indigo-600 px-3 py-1.5 text-sm text-white hover:bg-indigo-700 disabled:opacity-40"
-    >
-      Read File (YAML)
     </button>
     <button
       onclick={testCRUD}
