@@ -68,16 +68,25 @@ export const msgbox = {
     res?.(value);
   },
 
-  /** Requires explicit choice — not dismissible by clicking outside */
-  confirm(message: string, title?: string): Promise<boolean> {
+  /**
+   * Requires explicit choice — not dismissible by clicking outside.
+   *
+   * `labels` names the two buttons after what they do. Cancel/Confirm read
+   * wrong whenever the action is itself a cancelling: "Discard the changes?"
+   * with a button called Cancel leaves no one sure which one discards.
+   * `danger` draws the confirming button as a destructive one.
+   */
+  confirm(message: string, title?: string,
+          labels?: { confirm?: string; cancel?: string; danger?: boolean }): Promise<boolean> {
     return show({
       title: title ?? _('Confirm'),
       message,
       variant: 'warning',
       modal: true,
       buttons: [
-        { label: _('Cancel'),  value: false, variant: 'secondary' },
-        { label: _('Confirm'), value: true,  variant: 'primary'   },
+        { label: labels?.cancel ?? _('Cancel'),   value: false, variant: 'secondary' },
+        { label: labels?.confirm ?? _('Confirm'), value: true,
+          variant: labels?.danger ? 'danger' : 'primary' },
       ],
     }) as Promise<boolean>;
   },

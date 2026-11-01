@@ -50,7 +50,10 @@ registerTranslations('it', {
   'Error saving':             'Errore nel salvataggio',
 
   // form confirm
-  'You have unsaved changes. Discard them?': 'Hai modifiche non salvate. Vuoi annullarle?',
+  'The changes to this record will be lost.': 'Le modifiche a questo record andranno perse.',
+  'Delete':                   'Elimina',
+  'Discard changes':          'Scarta le modifiche',
+  'Keep editing':             'Continua a modificare',
 
   // form buttons
   'Save':                     'Salva',

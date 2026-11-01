@@ -794,7 +794,8 @@
     if (dirty) {
       confirming = true;
       try {
-        if (!(await msgbox.confirm(_('You have unsaved changes. Discard them?')))) return;
+        if (!(await msgbox.confirm(_('The changes to this record will be lost.'), _('Unsaved changes'),
+                                   { confirm: _('Discard changes'), cancel: _('Keep editing'), danger: true }))) return;
       } finally {
         confirming = false;
       }
