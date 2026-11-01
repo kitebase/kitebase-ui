@@ -36,6 +36,8 @@ export interface APIResponse<T = unknown> {
   error_type?: string;
   /** Full Python traceback — always present on server-side errors */
   traceback?: string;
+  /** The id of the request in the server's log, on an error */
+  request_id?: string;
 }
 
 export interface AuthResponse {

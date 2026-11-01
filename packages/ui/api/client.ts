@@ -16,6 +16,7 @@ import { statusBar } from '../status/statusBar.svelte';
 import type { LoginCredentials, AuthResponse, APIResponse, ContextUpdate } from './types';
 import type { ClientInfo } from '../auth/host';
 import { filenameOf } from './disposition';
+import { errorOf } from './envelope';
 
 const TOKEN_KEY = 'kitebase_token';
 const TIMEOUT = 10000;
@@ -206,14 +207,11 @@ class KitebaseAPI {
         // framework's ambient status line and belongs to no caller.
         return { status: 'success', data: d.data, message: d.message };
       }
-      return {
-        status: 'error',
-        message: d?.message,
-        error_type: d?.error_type,
-        traceback: d?.traceback,
-      };
+      return errorOf<T>(d);
     } catch (err: any) {
-      return { status: 'error', message: err.response?.data?.message ?? 'Request failed' };
+      // A refusal is a 4xx or a 5xx, so it lands here: its body is the same
+      // envelope, field errors and request id included.
+      return errorOf<T>(err.response?.data, 'Request failed');
     }
   }
 
@@ -237,13 +235,7 @@ class KitebaseAPI {
       return { status: 'success', data: null };
     } catch (err: any) {
       // A refusal comes back as JSON, read here as a blob like the file would be.
-      const d = await jsonOf(err.response?.data);
-      return {
-        status: 'error',
-        message: d?.message ?? 'Request failed',
-        error_type: d?.error_type,
-        traceback: d?.traceback,
-      };
+      return errorOf<null>(await jsonOf(err.response?.data), 'Request failed');
     }
   }
 }
