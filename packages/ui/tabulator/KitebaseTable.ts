@@ -183,6 +183,25 @@ export class KitebaseTable {
       opts.dataTreeStartExpanded = config.treeStartExpanded;
     }
 
+    if (config.rowTones) {
+      const tonesOf = config.rowTones;
+      const clear = (el: HTMLElement) => {
+        for (const c of Array.from(el.classList)) if (c.startsWith('kb-tone-')) el.classList.remove(c);
+      };
+      // Run on every render of a row, recycled ones included: the classes of
+      // the previous row go before the new ones come.
+      opts.rowFormatter = (row: any) => {
+        const el: HTMLElement = row.getElement();
+        clear(el);
+        for (const cell of row.getCells()) clear(cell.getElement());
+        const { cells, muted } = tonesOf(row.getData());
+        if (muted) el.classList.add('kb-tone-muted');
+        for (const [field, tone] of Object.entries(cells)) {
+          row.getCell(field)?.getElement().classList.add(`kb-tone-${tone}`);
+        }
+      };
+    }
+
     if (config.initialSort.length > 0) {
       opts.initialSort = config.initialSort.map((s) => ({ column: s.field, dir: s.dir }));
     }

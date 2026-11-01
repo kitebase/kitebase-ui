@@ -43,6 +43,12 @@ registerTranslations('it', {
   'Description':              'Descrizione',
   '{name} moved to the trash': '{name} spostato nel cestino',
   'Error loading':            'Errore nel caricamento',
+  // view switcher, cards
+  'Yes':                       'Sì',
+  'No':                        'No',
+  'Table':                     'Tabella',
+  'Tree':                      'Albero',
+  'Cards':                     'Schede',
   'Reduce':                   'Riduci',
 
   // form errors

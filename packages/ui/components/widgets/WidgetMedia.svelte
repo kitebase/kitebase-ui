@@ -16,8 +16,7 @@
   import { api } from '../../api/client';
   import { isMediaRef, mediaFileName, mediaUrl } from '../../api/media';
   import { _, _t } from '../../i18n';
-  import { acceptAttr, reduceImage, reducibleSize, sizeText } from './media';
-  import { msgbox } from '../msgbox.svelte';
+  import { acceptAttr, prepareImage, sizeText } from './media';
 
   interface Props {
     value: unknown;
@@ -53,42 +52,11 @@
   // its root) gets a frame with its name, never a broken-image icon.
   let brokenSrc = $state<string | null>(null);
 
-  /**
-   * The file to send: the original, or the image reduced to `resize:` when
-   * it is over it and the user agrees. null when the user cancels.
-   */
-  async function prepare(file: File): Promise<File | null> {
-    const side = column.resize;
-    if (!isImage || !side) return file;
-    const size = await reducibleSize(file);
-    if (!size || Math.max(size.width, size.height) <= side) return file;
-    const max = column.max_size;
-    const fits = !max || file.size <= max;
-    const message = _t('{name} is {width}x{height} pixels, {size}. This field reduces images to {side} pixels on the longest side.',
-                       { name: file.name, width: size.width, height: size.height,
-                         size: sizeText(file.size), side })
-      + (fits ? '' : ' ' + _t('The original is over the limit of {max}.', { max: sizeText(max!) }));
-    const choice = await msgbox.show({
-      title: _('Image larger than required'),
-      message,
-      variant: 'warning',
-      modal: true,
-      buttons: [
-        { label: _('Cancel'), value: 'cancel', variant: 'secondary' },
-        ...(fits ? [{ label: _('Keep the original'), value: 'keep', variant: 'secondary' as const }] : []),
-        { label: _('Reduce'), value: 'reduce', variant: 'primary' },
-      ],
-    });
-    if (choice === 'keep') return file;
-    if (choice === 'reduce') return reduceImage(file, side);
-    return null;
-  }
-
   async function send(file: File) {
     error = null;
     busy = true;
     try {
-      const ready = await prepare(file);
+      const ready = isImage ? await prepareImage(file, column) : file;
       if (!ready) return;
       const max = column.max_size;
       if (max && ready.size > max) {

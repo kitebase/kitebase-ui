@@ -41,6 +41,11 @@ export interface KitebaseTableConfig {
   treeMode: boolean;
   treeChildField: string;
   treeStartExpanded: boolean;
+  /**
+   * The tones of a row (components/tone.ts): `kb-tone-<tone>` on the toned
+   * cells, `kb-tone-muted` on a muted row.
+   */
+  rowTones?: (row: any) => { cells: Record<string, string>; muted: boolean };
   onRowClick?: (row: any) => void;
   onRowDblClick?: (row: any) => void;
   onCellClick?: (cell: CellInfo) => void;

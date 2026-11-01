@@ -5,6 +5,8 @@
  * DataViewNavigator.svelte, DataViewTable.svelte, and dataview.query.ts.
  */
 
+import type { ColumnTone } from './tone';
+
 export interface ViewSource {
   model?: string;
   endpoint?: string;
@@ -42,6 +44,8 @@ export interface ViewColumn {
   formatter_params?: Record<string, unknown>;
   /** A media column: the named rendition its cells show (`thumb`). */
   variant?: string;
+  /** The tone of this column's value (components/tone.ts): its cell, a card's ribbon. */
+  tone?: ColumnTone;
   visible?: boolean;
   frozen?: boolean;
   [key: string]: unknown;
@@ -101,6 +105,21 @@ export interface NavigatorConfig {
   mode?: 'browser' | 'lookup' | 'readonly' | 'batch' | 'buffered';
 }
 
+/**
+ * A card of the `cards` renderer. Every name is the key of a column of the
+ * view (its alias, else its last segment): the card shows what the query
+ * already brought, and an image comes in the variant its column names.
+ */
+export interface CardConfig {
+  image?: string;
+  title?: string;
+  subtitle?: string;
+  /** Further columns, each with its title. */
+  details?: string[];
+  /** A column whose value shows in a band, in that column's tone. */
+  ribbon?: string;
+}
+
 export interface ViewDescriptor {
   type: 'table' | 'tree' | 'kanban' | 'cards' | string;
   title?: string;
@@ -116,8 +135,10 @@ export interface ViewDescriptor {
    * limit. `[{field: returned_on, op: empty}]`; joined by AND.
    */
   rules?: Array<{ field: string; op: string; value?: unknown }>;
-  /** List of available view types for the toolbar switcher (e.g. ['table','kanban']). */
+  /** The renderers the toolbar switches between (`[table, cards]`); the view opens in `type`. */
   allow_views?: string[];
+  /** What a card shows, by the key of a column of the view (`cards`). */
+  card?: CardConfig;
   data_schema?: string;  // schema ID from plugin schemas: section
   [key: string]: unknown;
 }

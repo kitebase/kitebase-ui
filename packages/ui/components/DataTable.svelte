@@ -28,6 +28,7 @@
     treeMode = false,
     treeChildField = 'children',
     treeStartExpanded = false,
+    rowTones = undefined as ((row: any) => { cells: Record<string, string>; muted: boolean }) | undefined,
     filterMode = false,
     onRowClick = undefined as ((row: any) => void) | undefined,
     onRowDblClick = undefined as ((row: any) => void) | undefined,
@@ -57,6 +58,7 @@
     treeMode?: boolean;
     treeChildField?: string;
     treeStartExpanded?: boolean;
+    rowTones?: (row: any) => { cells: Record<string, string>; muted: boolean };
     onRowClick?: (row: any) => void;
     onRowDblClick?: (row: any) => void;
     onCellClick?: (cell: CellInfo) => void;
@@ -129,6 +131,8 @@
 
   export function focusRowById(id: unknown)                                    { kbTable?.focusRowById(id); }
   export function focus()                                                      { kbTable?.focus(); }
+  /** After the table was hidden: Tabulator measures nothing while it is not displayed. */
+  export function redraw()                                                     { kbTable?.redraw(true); }
   export function getAdjacentRowId(id: unknown): unknown                       { return kbTable?.getAdjacentRowId(id) ?? null; }
   export async function deleteRow(id: unknown): Promise<void>                  { return kbTable?.deleteRow(id); }
   export function updateRow(id: unknown, data: Record<string, unknown>)        { kbTable?.updateRow(id, data); }
@@ -143,7 +147,7 @@
     // Avoids re-creating the table on every prop change.
     const opts = untrack(() => ({
       data, columns, selectable, filterMode, mode, pageSize, rowHeight,
-      initialSort, treeMode, treeChildField, treeStartExpanded,
+      initialSort, treeMode, treeChildField, treeStartExpanded, rowTones,
       onRowClick, onRowDblClick, onCellClick, onSelectionChange,
       onDataLoaded, onFiltered, onSorted, onReady,
       onNavAdd, onNavEdit, onNavDelete, onNavCommands,
@@ -245,6 +249,14 @@
   :global(.tabulator-row.tabulator-row-even.tabulator-selected:hover) {
     background: inherit !important;
   }
+
+  /* Tones (components/tone.ts): the toned cell is tinted in its tone, a muted
+     row has its text greyed out; row backgrounds keep their meaning. */
+  :global(.tabulator-cell.kb-tone-accent)  { color: var(--kb-accent);  background: color-mix(in srgb, var(--kb-accent) 12%, transparent); font-weight: 600; }
+  :global(.tabulator-cell.kb-tone-success) { color: var(--kb-success); background: color-mix(in srgb, var(--kb-success) 12%, transparent); font-weight: 600; }
+  :global(.tabulator-cell.kb-tone-warning) { color: var(--kb-warning); background: color-mix(in srgb, var(--kb-warning) 12%, transparent); font-weight: 600; }
+  :global(.tabulator-cell.kb-tone-danger)  { color: var(--kb-danger);  background: color-mix(in srgb, var(--kb-danger) 12%, transparent); font-weight: 600; }
+  :global(.tabulator-row.kb-tone-muted)    { color: var(--kb-text-subtle); }
 
   /* Active row — keyboard navigation highlight */
   :global(.tabulator-row.kb-row-active),

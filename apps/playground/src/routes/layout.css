@@ -95,6 +95,8 @@
 
   /* Semantic */
   --kb-danger:         #dc2626;   /* red-600  — errors */
+  --kb-success:        #16a34a;   /* green-600: a good state (tones) */
+  --kb-warning:        #d97706;   /* amber-600: a state to look at (tones) */
 }
 
 @layer utilities {

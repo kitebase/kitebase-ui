@@ -9,6 +9,10 @@
  * its own limits to whatever arrives.
  */
 
+import type { TableColumnInfo } from '../../api/serverConfig.svelte';
+import { _, _t } from '../../i18n';
+import { msgbox } from '../msgbox.svelte';
+
 // Re-encoded in their own format. A GIF may be animated and an SVG is not
 // raster: both leave as they are.
 const REDUCIBLE: Record<string, number | undefined> = {
@@ -52,6 +56,38 @@ export async function reduceImage(file: File, maxSide: number | undefined): Prom
   } finally {
     bitmap.close();
   }
+}
+
+/**
+ * The image to send for a column: the original, or the image reduced to its
+ * `resize:` when it is over it and the user agrees. null when the user
+ * cancels. The original is offered only when it fits `max_size`.
+ */
+export async function prepareImage(file: File, column: TableColumnInfo): Promise<File | null> {
+  const side = column.resize;
+  if (!side) return file;
+  const size = await reducibleSize(file);
+  if (!size || Math.max(size.width, size.height) <= side) return file;
+  const max = column.max_size;
+  const fits = !max || file.size <= max;
+  const message = _t('{name} is {width}x{height} pixels, {size}. This field reduces images to {side} pixels on the longest side.',
+                     { name: file.name, width: size.width, height: size.height,
+                       size: sizeText(file.size), side })
+    + (fits ? '' : ' ' + _t('The original is over the limit of {max}.', { max: sizeText(max!) }));
+  const choice = await msgbox.show({
+    title: _('Image larger than required'),
+    message,
+    variant: 'warning',
+    modal: true,
+    buttons: [
+      { label: _('Cancel'), value: 'cancel', variant: 'secondary' },
+      ...(fits ? [{ label: _('Keep the original'), value: 'keep', variant: 'secondary' as const }] : []),
+      { label: _('Reduce'), value: 'reduce', variant: 'primary' },
+    ],
+  });
+  if (choice === 'keep') return file;
+  if (choice === 'reduce') return reduceImage(file, side);
+  return null;
 }
 
 /** The `accept` attribute of a file input, from the column's extensions. */

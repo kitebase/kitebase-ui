@@ -1,13 +1,14 @@
 <script lang="ts">
   /**
-   * DataView.svelte — descriptor-driven data view (table / tree).
+   * DataView.svelte — descriptor-driven data view (table / tree / cards).
    *
    * Orchestrates data loading, state persistence, column mapping and
    * event routing. Rendering is delegated to DataViewTable (table/tree)
    * and toolbar to DataViewNavigator.
    *
-   * Future view types (kanban, cards, …) will be mounted alongside
-   * DataViewTable with class:hidden and activated via activeViewType.
+   * The cards renderer is mounted beside DataViewTable, which stays mounted
+   * and hidden: Tabulator keeps owning the loaded rows (counts, selection,
+   * load more, restore), and the cards show its active rows.
    *
    * Props:
    *   view     ViewDescriptor            resolved view descriptor
@@ -20,6 +21,9 @@
   import { visibleButtons } from './navigator.visibility';
   import DataViewNavigator from './DataViewNavigator.svelte';
   import DataViewTable from './DataViewTable.svelte';
+  import DataViewCards from './DataViewCards.svelte';
+  import { rowTones } from './tone';
+  import { prepareImage, sizeText } from './widgets/media';
   import DataFormView from './DataFormView.svelte';
   import type { ColumnDef } from '$kitebase/tabulator/KitebaseTable';
   import { api } from '$kitebase/api/client';
@@ -53,7 +57,7 @@
     CommandItem,
   } from './dataview.types';
 
-  import type { ViewDescriptor, NavigatorConfig, CommandItem } from './dataview.types';
+  import type { ViewDescriptor, NavigatorConfig, CommandItem, CardConfig } from './dataview.types';
   import { commandLabel } from './dataview.types';
 
   // ── Constants ──────────────────────────────────────────────────────────────
@@ -78,6 +82,8 @@
     order?: OrderSpec[];
     /** Keys a command asked the view to carry on every query (opaque). */
     params?: Record<string, unknown>;
+    /** The renderer the user switched to, among `allow_views`. */
+    viewType?: string;
   }
 
   // ── Props ──────────────────────────────────────────────────────────────────
@@ -166,7 +172,9 @@
 
   // Active view type — initialized from descriptor, switchable in future.
   // untrack: intentionally captures only the initial value (user can switch at runtime).
-  let activeViewType = $state(untrack(() => view.type ?? 'table'));
+  let activeViewType = $state(untrack(() =>
+    savedState?.viewType && view.allow_views?.includes(savedState.viewType)
+      ? savedState.viewType : view.type ?? 'table'));
 
   // ── Derived ────────────────────────────────────────────────────────────────
 
@@ -239,6 +247,97 @@
 
   // ── State persistence ──────────────────────────────────────────────────────
 
+  // ── Cards ──────────────────────────────────────────────────────────────────
+
+  const isCards = $derived(activeViewType === 'cards');
+  // The toned columns, by key: a cell's tone in the grid, a ribbon's on a card,
+  // and a muted row from any of them.
+  const columnTones = $derived(Object.fromEntries((view.columns ?? [])
+    .filter((c) => c.tone).map((c) => [extractFieldKey(c.field), c.tone!])));
+  const tonesOfRow = $derived(Object.keys(columnTones).length > 0
+    ? (row: Record<string, unknown>) => rowTones(columnTones, row) : undefined);
+  // The rows the cards show: the table's active ones, filtered and sorted as
+  // the table has them, read again whenever they change there.
+  let cardRows = $state<unknown[]>([]);
+  function syncCards() {
+    if (isCards && tableRef) cardRows = tableRef.getActiveData();
+  }
+
+  const card = $derived(view.card ?? defaultCard());
+
+  /**
+   * The card of a view that declares none, from its columns: the table's
+   * display field as the title (else the first column that is not the key),
+   * the first image column as the image, three more visible columns as details.
+   */
+  function defaultCard(): CardConfig {
+    const model = view.source?.model;
+    const table = model ? serverConfig.tables[model] : undefined;
+    const media = new Map((table?.columns ?? []).map((c) => [c.name, c.media]));
+    const cols = (view.columns ?? []).map((c) => ({
+      key: extractFieldKey(c.field),
+      own: c.field.includes('.') ? null : c.field.replace(/\s+as\s+.*$/i, '').trim(),
+      visible: c.visible !== false,
+    }));
+    const image = cols.find((c) => c.own && media.get(c.own) === 'image')?.key;
+    const text = cols.filter((c) => c.visible && c.key !== pkField && (!c.own || !media.get(c.own)));
+    const title = (text.find((c) => c.own === table?.display_field) ?? text[0])?.key;
+    return {
+      image,
+      title,
+      details: text.filter((c) => c.key !== title).slice(0, 3).map((c) => c.key),
+    };
+  }
+  const cardTitles = $derived(Object.fromEntries((view.columns ?? []).map((c) =>
+    [extractFieldKey(c.field), c.title ?? extractFieldKey(c.field)])));
+
+  // The stored image column behind the card's image, when it is one of this
+  // table's own: a file dropped on the card replaces it.
+  const cardImage = $derived.by(() => {
+    const model = view.source?.model;
+    const col = (view.columns ?? []).find((c) => card.image && extractFieldKey(c.field) === card.image);
+    if (!model || !col || navigatorMode !== 'browser') return null;
+    const field = col.field.replace(/\s+as\s+.*$/i, '').trim();
+    if (field.includes('.')) return null;
+    const info = serverConfig.tables[model]?.columns.find((c) => c.name === field);
+    return info?.media === 'image' ? { model, field, info } : null;
+  });
+
+  async function handleCardImageDrop(row: Record<string, unknown>, file: File) {
+    const target = cardImage;
+    const id = row[pkField];
+    if (!target || id === null || id === undefined) return;
+    const ready = await prepareImage(file, target.info);
+    if (!ready) return;
+    const max = target.info.max_size;
+    if (max && ready.size > max) {
+      await msgbox.error(_t('{name} is {size}: this field takes up to {max}',
+                            { name: file.name, size: sizeText(ready.size), max: sizeText(max) }));
+      return;
+    }
+    const up = await api.upload(target.model, target.field, id as string | number, ready, file.name);
+    if (up.status !== 'success' || !up.data) {
+      await msgbox.error(up.message ?? _('Upload failed'));
+      return;
+    }
+    const res = await api.endpoint('db', { table: target.model, method: 'update', id,
+                                           data: { [target.field]: up.data.ref } });
+    if (res.status !== 'success') {
+      await msgbox.error(res.message ?? _('Error saving'));
+      return;
+    }
+    await refreshRows([id]);
+  }
+
+  function switchView(type: string) {
+    if (type === activeViewType) return;
+    activeViewType = type;
+    if (type === 'cards') syncCards();
+    // Tabulator measured nothing while it was hidden.
+    else setTimeout(() => tableRef?.redraw(), 0);
+    saveViewState();
+  }
+
   function saveViewState() {
     if (!tabulatorReady || !tableRef) return;
     const state: SavedViewState = {
@@ -252,6 +351,7 @@
       rules: ruleRows,
       order: userOrder,
       params: queryParams,
+      viewType: activeViewType,
     };
     remember(getStateKey(), state);
   }
@@ -564,6 +664,7 @@
         const newData = Array.isArray(res.data) ? res.data : [];
         if (newData.length > 0) {
           await tableRef.addRows(newData);
+          syncCards();
         }
       }
     } catch (e) {
@@ -859,6 +960,7 @@
       }
     }
     if (totalCount !== null) totalCount += delta;
+    syncCards();
     if (focusId != null) queueMicrotask(() => tableRef?.focusRowById(focusId));
   }
 
@@ -976,7 +1078,8 @@
     // until the parent is saved, but that is no reason to ask less: leaving the
     // form would throw away every other change too, and a row just typed in has
     // no undo at all.
-    if (!(await msgbox.confirm(_('Delete the selected record?')))) return;
+    if (!(await msgbox.confirm(_('Delete the selected record?'), undefined,
+                               { confirm: _('Delete'), danger: true }))) return;
 
     if (navigatorMode === 'buffered') {
       onEvent?.('row_delete', row);
@@ -1021,6 +1124,9 @@
 
   function handleDataLoaded(count: number) {
     rowCount = count;
+    // A macrotask, as for the focus below: on the first load Tabulator is not
+    // built yet when the data arrives.
+    setTimeout(syncCards, 0);
     filteredCount = null;
     onEvent?.('data_load', { count });
     if (!loadingMore) {
@@ -1042,11 +1148,13 @@
 
   function handleFiltered(count: number) {
     filteredCount = count < rowCount ? count : null;
+    syncCards();
     saveViewState();
   }
 
   function handleSorted() {
     gridSorted = (tableRef?.getSorters().length ?? 0) > 0;
+    syncCards();
     saveViewState();
   }
 
@@ -1090,6 +1198,9 @@
       searchable={quickSearchAvailable}
       searchValue={quickSearch}
       onSearch={handleSearch}
+      views={allowViews}
+      activeView={activeViewType}
+      onViewChange={switchView}
       rulesActive={ruleRows.length > 0 || userOrder.length > 0}
       onOpenRules={view.source?.model ? openRuleEditor : undefined}
     />
@@ -1125,8 +1236,22 @@
         {error}
       </div>
     {:else if initialized}
-      <!-- Future renderers (kanban, cards, …) mount here with class:hidden.
-           DataViewTable handles both 'table' and 'tree' view types. -->
+      {#if isCards}
+        <DataViewCards
+          rows={cardRows}
+          {card}
+          tones={columnTones}
+          titles={cardTitles}
+          {pkField}
+          activeId={_activeRowData ? _activeRowData[pkField] : null}
+          onRowClick={(row) => { _activeRowData = row; onEvent?.('row_click', row); }}
+          onRowDblClick={handleRowDblClick}
+          onImageDrop={cardImage ? handleCardImageDrop : undefined}
+        />
+      {/if}
+      <!-- DataViewTable handles 'table' and 'tree', and stays mounted under
+           the cards: it owns the loaded rows. -->
+      <div class="kb-dv-table" class:kb-dv-hidden={isCards}>
       <DataViewTable
         bind:this={tableRef}
         {rows}
@@ -1136,13 +1261,14 @@
         {isTreeMode}
         {treeChildField}
         {treeStartExpanded}
+        rowTones={tonesOfRow}
         onRowClick={(row) => { _activeRowData = row as Record<string,unknown>; onEvent?.('row_click', row); }}
         onRowDblClick={handleRowDblClick}
         onSelectionChange={handleSelectionChange}
         onDataLoaded={handleDataLoaded}
         onFiltered={handleFiltered}
         onSorted={handleSorted}
-        onReady={() => { tabulatorReady = true; }}
+        onReady={() => { tabulatorReady = true; syncCards(); }}
         onNavAdd={handleNavAdd}
         onNavEdit={handleNavEdit}
         onNavDelete={handleNavDelete}
@@ -1150,6 +1276,7 @@
         onNavRefresh={reloadData}
         onNavCancel={navigatorMode === 'lookup' ? handleNavLookupCancel : undefined}
       />
+      </div>
     {/if}
   </div>
 
@@ -1213,6 +1340,13 @@
     flex: 1;
     min-height: 0;
     overflow: hidden;
+  }
+
+  .kb-dv-table {
+    height: 100%;
+  }
+  .kb-dv-hidden {
+    display: none;
   }
 
   .kb-dv-placeholder {

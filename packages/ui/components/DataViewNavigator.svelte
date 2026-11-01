@@ -19,6 +19,7 @@
     Group, Download, Printer,
     RefreshCw, Ellipsis,
     ChevronDown, SquareCheckBig, Zap,
+    Table2, LayoutGrid, ListTree,
   } from 'lucide-svelte';
   import type { NavigatorConfig, CommandItem } from './dataview.types';
   import { commandLabel } from './dataview.types';
@@ -66,6 +67,10 @@
     // The rule editor: a deliberate act, so a button rather than a gesture.
     rulesActive = false,
     onOpenRules = undefined as (() => void) | undefined,
+    // The renderers the view switches between (`allow_views`); shown from two.
+    views = [] as string[],
+    activeView = 'table',
+    onViewChange = undefined as ((type: string) => void) | undefined,
   }: {
     config?: NavigatorConfig;
     filterMode?: boolean;
@@ -96,7 +101,16 @@
     onSearch?: (text: string) => void;
     rulesActive?: boolean;
     onOpenRules?: () => void;
+    views?: string[];
+    activeView?: string;
+    onViewChange?: (type: string) => void;
   } = $props();
+
+  const VIEW_BUTTONS: Record<string, { icon: typeof Table2; label: string }> = {
+    table: { icon: Table2, label: 'Table' },
+    tree:  { icon: ListTree, label: 'Tree' },
+    cards: { icon: LayoutGrid, label: 'Cards' },
+  };
 
   // ── Visibility resolution ──────────────────────────────────────────────────
 
@@ -104,7 +118,12 @@
 
   const visibleSet = $derived(visibleButtons(config));
 
+  // Column filters and ticks live in the grid's header and first column: on
+  // the cards they would toggle something nobody sees.
+  const GRID_ONLY = new Set(['filter', 'select']);
+
   function isVisible(id: string): boolean {
+    if (activeView === 'cards' && GRID_ONLY.has(id)) return false;
     return visibleSet.has(id);
   }
 
@@ -424,6 +443,25 @@
 
   <!-- ── Right group: count + spinner ──────────────────────────────────── -->
   <div class="kb-nav-right">
+    {#if views.length > 1 && onViewChange}
+      <div class="kb-nav-views" role="group" aria-label={_('View')}>
+        {#each views as type (type)}
+          {@const button = VIEW_BUTTONS[type]}
+          {#if button}
+            <button
+              class="kb-nav-btn"
+              class:kb-nav-btn-active={type === activeView}
+              title={_(button.label)}
+              aria-label={_(button.label)}
+              aria-pressed={type === activeView}
+              onclick={() => onViewChange?.(type)}
+            >
+              <button.icon size={14} />
+            </button>
+          {/if}
+        {/each}
+      </div>
+    {/if}
     {#if loading}
       <div class="kb-nav-spinner" aria-label="Loading"></div>
     {/if}
@@ -453,6 +491,14 @@
     align-items: center;
     gap: 0.15rem;
     flex-wrap: nowrap;
+  }
+
+  .kb-nav-views {
+    display: flex;
+    gap: 0.1rem;
+    padding-right: 0.35rem;
+    margin-right: 0.15rem;
+    border-right: 1px solid var(--kb-border);
   }
 
   .kb-nav-right {

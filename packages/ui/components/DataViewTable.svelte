@@ -6,9 +6,9 @@
    * Exposes the same imperative API as DataTable via export functions so
    * DataView can drive state restore, sort, filters and selections.
    *
-   * Extension point: when kanban/cards renderers are added, DataView will
-   * mount them alongside this component (class:hidden pattern) and switch
-   * activeViewType. A redraw(true) call will be needed here on un-hide.
+   * Another renderer (cards) is mounted beside it on the same rows, and this
+   * one stays mounted while hidden: counts, selection and restore keep
+   * working. DataView calls redraw() when it is shown again.
    */
   import DataTable from './DataTable.svelte';
   import type { ColumnDef } from '$kitebase/tabulator/KitebaseTable';
@@ -21,6 +21,7 @@
     isTreeMode = false,
     treeChildField = 'children',
     treeStartExpanded = false,
+    rowTones = undefined as ((row: any) => { cells: Record<string, string>; muted: boolean }) | undefined,
     onRowClick = undefined as ((row: unknown) => void) | undefined,
     onRowDblClick = undefined as ((row: unknown) => void) | undefined,
     onSelectionChange = undefined as ((rows: unknown[]) => void) | undefined,
@@ -44,6 +45,7 @@
     isTreeMode?: boolean;
     treeChildField?: string;
     treeStartExpanded?: boolean;
+    rowTones?: (row: any) => { cells: Record<string, string>; muted: boolean };
     onRowClick?: (row: unknown) => void;
     onRowDblClick?: (row: unknown) => void;
     onSelectionChange?: (rows: unknown[]) => void;
@@ -80,6 +82,7 @@
   export async function addRows(newRows: any[]): Promise<number>               { return tableRef?.addRows(newRows) ?? 0; }
   export function focusRowById(id: unknown)                                    { tableRef?.focusRowById(id); }
   export function focus()                                                      { tableRef?.focus(); }
+  export function redraw()                                                     { tableRef?.redraw(); }
   export function getAdjacentRowId(id: unknown): unknown                       { return tableRef?.getAdjacentRowId(id) ?? null; }
   export async function deleteRow(id: unknown): Promise<void>                  { return tableRef?.deleteRow(id); }
   export function updateRow(id: unknown, data: Record<string, unknown>)        { tableRef?.updateRow(id, data); }
@@ -95,6 +98,7 @@
   treeMode={isTreeMode}
   {treeChildField}
   {treeStartExpanded}
+  {rowTones}
   {onRowClick}
   {onRowDblClick}
   {onSelectionChange}
