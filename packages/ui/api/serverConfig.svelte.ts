@@ -139,6 +139,16 @@ export interface TableColumnInfo {
   /** Where the column stands when a query is built (see dataview.fields.ts). */
   query_rank?: QueryRank;
   foreign_key?: { target: string; field: string };
+  /** A media column (kitebase.media): its kind, root and upload limits. */
+  media?: 'image' | 'file' | 'files';
+  root?: string;
+  accept?: string[];
+  /** Bytes. */
+  max_size?: number;
+  /** The longest side the browser reduces an image to before sending it. */
+  resize?: number;
+  /** An upload waits for the record to be saved: the root's layout holds its id. */
+  needs_record?: boolean;
   [key: string]: unknown;
 }
 

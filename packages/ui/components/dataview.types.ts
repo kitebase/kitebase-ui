@@ -40,6 +40,8 @@ export interface ViewColumn {
   align?: 'left' | 'center' | 'right';
   formatter?: 'date' | 'datetime' | 'time' | string;
   formatter_params?: Record<string, unknown>;
+  /** A media column: the named rendition its cells show (`thumb`). */
+  variant?: string;
   visible?: boolean;
   frozen?: boolean;
   [key: string]: unknown;

@@ -4,7 +4,8 @@
  * Resolution order for `formatter: name` in column YAML (see resolveFormatter):
  *   1. DATE_FORMATTERS  — built-in kitebase: date, datetime, time
  *                         (`datetime` shows hours and minutes; `datetime,second`
- *                         adds the seconds, as `granularity: second` does)
+ *                         adds the seconds, as `granularity: second` does);
+ *                         MEDIA_FORMATTERS (media.ts): media_image, media_file
  *   2. formatterRegistry — registered by plugins via formatters.ts files
  *   3. raw string       — passed to Tabulator as built-in formatter name
  *                         (e.g. "star", "progress", "tickCross", "color", ...)
@@ -14,6 +15,8 @@
  *   - Tabulator built-in formatters (star, progress) use TABULATOR_SHORTHAND below.
  *   - Unknown formatters fall back to generic { args: [...] }.
  */
+
+import { MEDIA_FORMATTERS } from './media';
 
 export type CellFormatter   = (cell: any, params: any, onRendered?: any) => string | HTMLElement;
 export type ShorthandParser = (args: string[]) => Record<string, unknown>;
@@ -100,7 +103,9 @@ export function resolveFormatter(
   const name     = commaIdx === -1 ? rawFmt : rawFmt.slice(0, commaIdx).trim();
   const args     = commaIdx === -1 ? [] : rawFmt.slice(commaIdx + 1).split(',').map(s => s.trim());
 
-  // 1. Built-in date formatters
+  // 1. Built-in formatters: dates and media
+  const mediaFmt = MEDIA_FORMATTERS[name];
+  if (mediaFmt) return { formatter: mediaFmt, formatterParams: explicitParams };
   const dateFmt = DATE_FORMATTERS[name];
   if (dateFmt) {
     return { formatter: dateFmt,

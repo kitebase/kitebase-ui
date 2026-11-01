@@ -30,6 +30,7 @@
   import WidgetFKCombobox from './widgets/WidgetFKCombobox.svelte';
   import WidgetJson from './widgets/WidgetJson.svelte';
   import WidgetChecklist from './widgets/WidgetChecklist.svelte';
+  import WidgetMedia from './widgets/WidgetMedia.svelte';
   import PluginComponent from './PluginComponent.svelte';
   import { getPluginLoader } from '$kitebase/plugins/context';
   import FieldHelp from './widgets/FieldHelp.svelte';
@@ -225,6 +226,25 @@
     return (table?.columns ?? []).filter((c) => c.secret).map((c) => c.name);
   });
 
+  // The media columns (Image, File) of the model: their widget uploads, and
+  // needs the column's kind and limits, the table and the record's id.
+  let mediaColumns = $derived.by(() => {
+    const model = view.source?.model;
+    const table = model ? serverConfig.tables[model] : undefined;
+    return new Map((table?.columns ?? [])
+      .filter((c) => c.media === 'image' || c.media === 'file')
+      .map((c) => [c.name, c]));
+  });
+
+  // The id an upload is allocated under: the one the form was opened on, or
+  // the one the first save gave a new record.
+  let mediaRecordId = $derived.by(() => {
+    const id = resolveRecordId();
+    if (id !== null && id !== undefined) return id;
+    const pk = serverConfig.tables[view.source?.model ?? '']?.pk_fields?.[0];
+    return pk ? (draft[pk] as number | string | null | undefined) : undefined;
+  });
+
   // All leaf FormFields — from layout tree or legacy flat list.
   // A hidden field is not merely invisible: it is not the form's business at all,
   // so it is out of validation and out of the payload too.
@@ -299,6 +319,7 @@
   function resolveWidget(field: FormField): string {
     if (field.widget) return field.widget as string;
     if (field.foreign_key) return 'fk';
+    if (mediaColumns.has(field.name)) return 'media';
     // Declared choices are a pick list whatever the type: a String with choices
     // is not free text.
     if (field.choices && field.choices.length > 0) return 'combobox';
@@ -1137,6 +1158,16 @@
         oninvalid={(m) => widgetInvalid(field.name, m)}
         readonly={fieldReadonly}
         {field}
+      />
+    {:else if widgetType === 'media' && mediaColumns.has(field.name)}
+      <WidgetMedia
+        value={draft[field.name]}
+        onchange={(v) => patch(field.name, v)}
+        readonly={fieldReadonly}
+        {field}
+        table={view.source!.model!}
+        column={mediaColumns.get(field.name)!}
+        recordId={mediaRecordId}
       />
     {:else if widgetType.includes('.') && pluginLoader}
       <!-- A widget with a dot is a plugin's (`acl.access`), found as the

@@ -343,6 +343,16 @@
 
   const DATE_FORMATS = new Set(['date', 'datetime']);
 
+  // The variants the view columns name (`variant: thumb`), sent with every
+  // query: the server signs the URL of that rendition, never the original.
+  const mediaVariants = $derived.by(() => {
+    const variants: Record<string, string> = {};
+    for (const c of view.columns ?? []) {
+      if (typeof c.variant === 'string' && c.variant) variants[extractFieldKey(c.field)] = c.variant;
+    }
+    return Object.keys(variants).length > 0 ? { variants } : {};
+  });
+
   const schemaHints = $derived.by(() => {
     const aligns: Record<string, 'left' | 'right' | 'center'> = {};
     const formatters: Record<string, string> = {};
@@ -355,9 +365,13 @@
       const column = table
         ? serverConfig.tables[table]?.columns.find((col) => col.name === name)
         : undefined;
+      const key = extractFieldKey(c.field);
+      // A media column shows its file whatever its type is called.
+      if (column?.media === 'image' || column?.media === 'file') {
+        formatters[key] = column.media === 'image' ? 'media_image' : 'media_file';
+      }
       const type = column?.type;
       if (!type) continue;
-      const key = extractFieldKey(c.field);
       const align = resolveAlign(type, serverConfig.types);
       if (align) aligns[key] = align;
       const fmt = resolveFormatterByType(type, serverConfig.types);
@@ -465,7 +479,7 @@
       error = null;
       try {
         if (viewType === 'tree') {
-          const res = await api.endpoint('query', { format: 'records', query: q });
+          const res = await api.endpoint('query', { format: 'records', query: q, ...mediaVariants });
           if (res.status === 'success') {
             let data = Array.isArray(res.data) ? res.data : [];
             if (treeCfg?.parent_field) {
@@ -480,7 +494,7 @@
         } else {
           q.limit = _ps;
           q.offset = 0;
-          const res = await api.endpoint('query', { format: 'records', query: q, count: true });
+          const res = await api.endpoint('query', { format: 'records', query: q, ...mediaVariants, count: true });
           if (res.status === 'success') {
             const d = res.data as { records: unknown[]; total: number };
             rows = Array.isArray(d.records) ? d.records : [];
@@ -545,7 +559,7 @@
 
     loadingMore = true;
     try {
-      const res = await api.endpoint('query', { format: 'records', query: q });
+      const res = await api.endpoint('query', { format: 'records', query: q, ...mediaVariants });
       if (res.status === 'success') {
         const newData = Array.isArray(res.data) ? res.data : [];
         if (newData.length > 0) {
@@ -819,7 +833,7 @@
     const q = buildQuery(src, view.columns, trigger ?? {}, { ...queryExtras, pk: pkField, only: ids });
     let fresh: Record<string, unknown>[] = [];
     try {
-      const res = await api.endpoint('query', { format: 'records', query: q });
+      const res = await api.endpoint('query', { format: 'records', query: q, ...mediaVariants });
       if (res.status !== 'success') { reloadData(); return; }
       fresh = (res.data ?? []) as Record<string, unknown>[];
     } catch { reloadData(); return; }

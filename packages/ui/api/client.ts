@@ -238,6 +238,36 @@ class KitebaseAPI {
       return errorOf<null>(await jsonOf(err.response?.data), 'Request failed');
     }
   }
+
+  // ── Media — POST /upload ──────────────────────────────────────────────────
+  //
+  // A file for a media column, multipart. The server checks the bytes,
+  // allocates the path and answers `{ref, url}` for an Image or File column:
+  // the form saves `ref` like any value, the upload writes nothing in the row.
+  // `id` is absent for a record not saved yet.
+
+  async upload<T = { ref: string; url: string }>(
+    table: string, field: string, id: number | string | null | undefined, file: Blob, filename: string,
+  ): Promise<APIResponse<T>> {
+    const form = new FormData();
+    form.append('table', table);
+    form.append('field', field);
+    if (id !== null && id !== undefined) form.append('id', String(id));
+    form.append('file', file, filename);
+    try {
+      // The browser writes the multipart boundary itself, once the JSON
+      // default is out of the way.
+      const res = await this.client.post<any>('/upload', form, {
+        headers: { 'Content-Type': undefined },
+        timeout: DOWNLOAD_TIMEOUT,
+      });
+      const d = res.data;
+      if (d?.status === 'success') return { status: 'success', data: d.data };
+      return errorOf<T>(d);
+    } catch (err: any) {
+      return errorOf<T>(err.response?.data, 'Upload failed');
+    }
+  }
 }
 
 function deliver(blob: Blob, filename: string, inline: boolean): void {

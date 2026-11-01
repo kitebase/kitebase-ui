@@ -22,6 +22,24 @@ registerTranslations('it', {
   'No fields configured.':    'Nessun campo configurato.',
   'Select an item to view the detail.': 'Seleziona un elemento per visualizzare il dettaglio.',
 
+  // media
+  'No file':                  'Nessun file',
+  'Image unavailable':        'Immagine non disponibile',
+  'Save the record before adding a file': 'Salva il record prima di aggiungere un file',
+  'Uploading…':               'Caricamento…',
+  'Replace':                  'Sostituisci',
+  'Choose an image':          "Scegli un'immagine",
+  'Choose a file':            'Scegli un file',
+  'or drop it here':          'o trascinalo qui',
+  'Upload failed':            'Caricamento non riuscito',
+  '{name} is {size}: this field takes up to {max}': '{name} pesa {size}: questo campo accetta fino a {max}',
+  'Image larger than required': 'Immagine più grande del richiesto',
+  '{name} is {width}x{height} pixels, {size}. This field reduces images to {side} pixels on the longest side.':
+    '{name} misura {width}x{height} pixel, {size}. Questo campo riduce le immagini a {side} pixel sul lato lungo.',
+  'The original is over the limit of {max}.': "L'originale supera il limite di {max}.",
+  'Keep the original':        "Tieni l'originale",
+  'Reduce':                   'Riduci',
+
   // form errors
   'Error loading data':       'Errore nel caricamento',
   'Error saving':             'Errore nel salvataggio',
