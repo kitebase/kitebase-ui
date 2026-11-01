@@ -745,6 +745,17 @@
         const errData = res.data as Record<string, unknown> | undefined;
         if (errData?.errors) {
           errors = errData.errors as Record<string, string>;
+          // An error on a field this form does not show (a password the
+          // generated form leaves out) has nowhere to appear but here.
+          const shown = new Set(flatFields.map((f) => f.name));
+          const elsewhere = Object.entries(errors).filter(([name]) => !shown.has(name));
+          if (elsewhere.length > 0) {
+            internalStatus = {
+              message: `${res.message ?? _('Error saving')}: `
+                + elsewhere.map(([name, msg]) => `${name}: ${msg}`).join('; '),
+              type: 'error',
+            };
+          }
           focusFirstError();
         } else {
           internalStatus = { message: res.message ?? _('Error saving'), type: 'error' };
@@ -843,18 +854,28 @@
     if (!isEditable || !fieldAreaEl) return;
     const autofocusName = view.source?.autofocus;
     if (autofocusName) {
-      const el = fieldAreaEl.querySelector<HTMLElement>(`[data-field="${autofocusName}"] ${FOCUSABLE_SEL}`);
-      el?.focus();
+      focusableOf(fieldAreaEl.querySelector(`[data-field="${autofocusName}"]`))?.focus();
     } else {
       fieldAreaEl.querySelector<HTMLElement>(FOCUSABLE_SEL)?.focus();
     }
   }
 
+  // The selector is a list: it is applied inside the field's element, since a
+  // prefix in front of it would only bind its first alternative.
+  function focusableOf(fieldEl: Element | null): HTMLElement | null {
+    return fieldEl?.querySelector<HTMLElement>(FOCUSABLE_SEL) ?? null;
+  }
+
+  // The first field in error as the form lays them out, whatever order the
+  // errors arrived in.
   function focusFirstError() {
     if (!fieldAreaEl) return;
-    const firstName = Object.keys(errors)[0];
-    if (!firstName) return;
-    fieldAreaEl.querySelector<HTMLElement>(`[data-field="${firstName}"] ${FOCUSABLE_SEL}`)?.focus();
+    for (const el of fieldAreaEl.querySelectorAll<HTMLElement>('[data-field]')) {
+      const name = el.dataset.field;
+      if (!name || !(name in errors)) continue;
+      const target = focusableOf(el);
+      if (target) { target.focus(); return; }
+    }
   }
 
   // Local mode: focus at mount. Async modes: focus after loadData() completes.
