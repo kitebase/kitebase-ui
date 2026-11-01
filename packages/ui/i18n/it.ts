@@ -38,6 +38,11 @@ registerTranslations('it', {
     '{name} misura {width}x{height} pixel, {size}. Questo campo riduce le immagini a {side} pixel sul lato lungo.',
   'The original is over the limit of {max}.': "L'originale supera il limite di {max}.",
   'Keep the original':        "Tieni l'originale",
+  'Add files':                'Aggiungi file',
+  'or drop them here':        'o trascinali qui',
+  'Description':              'Descrizione',
+  '{name} moved to the trash': '{name} spostato nel cestino',
+  'Error loading':            'Errore nel caricamento',
   'Reduce':                   'Riduci',
 
   // form errors

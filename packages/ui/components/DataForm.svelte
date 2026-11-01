@@ -31,6 +31,7 @@
   import WidgetJson from './widgets/WidgetJson.svelte';
   import WidgetChecklist from './widgets/WidgetChecklist.svelte';
   import WidgetMedia from './widgets/WidgetMedia.svelte';
+  import WidgetFiles from './widgets/WidgetFiles.svelte';
   import PluginComponent from './PluginComponent.svelte';
   import { getPluginLoader } from '$kitebase/plugins/context';
   import FieldHelp from './widgets/FieldHelp.svelte';
@@ -226,13 +227,13 @@
     return (table?.columns ?? []).filter((c) => c.secret).map((c) => c.name);
   });
 
-  // The media columns (Image, File) of the model: their widget uploads, and
-  // needs the column's kind and limits, the table and the record's id.
+  // The media columns (Image, File, Files) of the model: their widgets
+  // upload, and need the column's kind and limits, the table and the record's id.
   let mediaColumns = $derived.by(() => {
     const model = view.source?.model;
     const table = model ? serverConfig.tables[model] : undefined;
     return new Map((table?.columns ?? [])
-      .filter((c) => c.media === 'image' || c.media === 'file')
+      .filter((c) => c.media === 'image' || c.media === 'file' || c.media === 'files')
       .map((c) => [c.name, c]));
   });
 
@@ -319,7 +320,7 @@
   function resolveWidget(field: FormField): string {
     if (field.widget) return field.widget as string;
     if (field.foreign_key) return 'fk';
-    if (mediaColumns.has(field.name)) return 'media';
+    if (mediaColumns.has(field.name)) return mediaColumns.get(field.name)!.media === 'files' ? 'files' : 'media';
     // Declared choices are a pick list whatever the type: a String with choices
     // is not free text.
     if (field.choices && field.choices.length > 0) return 'combobox';
@@ -1185,6 +1186,17 @@
         value={draft[field.name]}
         onchange={(v) => patch(field.name, v)}
         readonly={fieldReadonly}
+        {field}
+        table={view.source!.model!}
+        column={mediaColumns.get(field.name)!}
+        recordId={mediaRecordId}
+      />
+    {:else if widgetType === 'files' && mediaColumns.has(field.name)}
+      <!-- A Files column is `editable: false` because the row holds no value
+           of it: its files are written through their own gestures, which the
+           server checks one by one. -->
+      <WidgetFiles
+        readonly={!isEditable || field.readonly === true}
         {field}
         table={view.source!.model!}
         column={mediaColumns.get(field.name)!}
