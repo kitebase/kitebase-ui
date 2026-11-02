@@ -25,6 +25,7 @@
   import { rowTones } from './tone';
   import { prepareImage, sizeText } from './widgets/media';
   import DataFormView from './DataFormView.svelte';
+  import { callJudged, presentOutcome } from './flow';
   import type { ColumnDef } from '$kitebase/tabulator/KitebaseTable';
   import { api } from '$kitebase/api/client';
   import { serverConfig, resolveFormatter as resolveFormatterByType, resolveAlign } from '$kitebase/api/serverConfig.svelte';
@@ -1090,10 +1091,13 @@
     const model = view.source?.model as string | undefined;
     if (!model) return;
     try {
-      const res = await api.endpoint('db', { table: model, method: 'delete', id });
+      // Judged: the table's rules may ask, or refuse, before the row goes
+      const res = await callJudged('db', { table: model, method: 'delete', id });
+      if (res.cancelled) return;
       if (res.status === 'success') {
         _internalFocusId = null;
         await refreshRows([id]);
+        await presentOutcome(res.flow, { stack, title: _('Delete') });
       } else {
         msgbox.error(res.message ?? _('Error deleting record'));
       }

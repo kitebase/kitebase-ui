@@ -205,7 +205,7 @@ class KitebaseAPI {
         // A success may carry a line of its own — an endpoint called from a
         // button reports what it did. Distinct from `$message`, which is the
         // framework's ambient status line and belongs to no caller.
-        return { status: 'success', data: d.data, message: d.message };
+        return { status: 'success', data: d.data, message: d.message, flow: d['$flow'] };
       }
       return errorOf<T>(d);
     } catch (err: any) {

@@ -16,5 +16,6 @@ export function errorOf<T = unknown>(body: unknown, fallback?: string): APIRespo
     error_type: d.error_type,
     traceback: d.traceback,
     request_id: d.request_id,
+    flow: d['$flow'],
   };
 }

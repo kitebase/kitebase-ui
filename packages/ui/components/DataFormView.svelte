@@ -23,6 +23,10 @@
   import type { StackInstance } from '$kitebase/stack/stack.svelte';
   import { api } from '$kitebase/api/client';
   import DataForm from './DataForm.svelte';
+  import { callJudged, presentOutcome, FlowCancelled, FlowRefused } from './flow';
+  import { applyResult } from './resultAction';
+  import { resolveRecordTokens } from './record';
+  import type { Flow } from '../api/types';
   import {
     collectionNodes, loadedAggregate, newAggregate, serialize, setValues,
     type Aggregate, type TreeNode,
@@ -162,22 +166,25 @@
    * Write the aggregate. Throws on refusal, which keeps the form dirty and shows
    * the reason — a tree that did not reach the database must not look saved.
    */
-  async function saveAggregate(draft: Record<string, unknown>): Promise<Record<string, unknown>> {
+  async function saveAggregate(draft: Record<string, unknown>):
+      Promise<{ values: Record<string, unknown>; flow?: Flow }> {
     const agg = aggregate!;
     setValues(agg.root, draft);
     const page = formId!;
 
-    const res = await api.endpoint('save_tree', serialize(agg));
-    if (res.status !== 'success') throw new Error(res.message ?? _('Error saving'));
+    // Judged: the rules of the root's table may ask before anything is written
+    const res = await callJudged('save_tree', serialize(agg), title);
+    if (res.cancelled) throw new FlowCancelled();
+    if (res.status !== 'success') throw new FlowRefused(res.message ?? _('Error saving'), res.flow?.patch);
 
     // Re-read from the answer: the database holds defaults and stamps the buffer
     // never saw, and the temporary ids are keys now.
     const saved = res.data as { root: TreeNode };
     aggregate = loadedAggregate(page, saved.root);
-    return { ...aggregate.root.values };
+    return { values: { ...aggregate.root.values }, flow: res.flow };
   }
 
-  async function handleSave(savedData: Record<string, unknown>) {
+  async function handleSave(savedData: Record<string, unknown>, flow?: Flow) {
     if (buffer) {
       // A confirm, not a save: the values stay in the node, and the row reaches
       // the database when the root of the aggregate is saved.
@@ -186,9 +193,20 @@
       stack.pop();
       return;
     }
-    const saved = aggregate ? await saveAggregate(savedData) : savedData;
+    const mode = (aggregate ? aggregate.root.op === 'create' : recordId == null) ? 'insert' : 'update';
+    let saved = savedData;
+    if (aggregate) ({ values: saved, flow } = await saveAggregate(savedData));
     onSaved?.(saved);
     stack.pop();
+    // What the rules answered once the record was saved, lines then actions;
+    // then what this form does after a save of this mode
+    const ctx = { stack, title };
+    await presentOutcome(flow, ctx);
+    const reaction = descriptor?.on_saved?.[mode];
+    if (reaction) {
+      const params = resolveRecordTokens(reaction.params as Record<string, unknown> | undefined, saved);
+      await applyResult({ status: 'success', data: { ...reaction, params } }, ctx);
+    }
   }
 
   function handleCancel() {

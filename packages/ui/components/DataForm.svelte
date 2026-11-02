@@ -42,6 +42,8 @@
   import CollectionView from './CollectionView.svelte';
   import DataFormView from './DataFormView.svelte';
   import { msgbox } from './msgbox.svelte';
+  import { callJudged, FlowCancelled, FlowRefused } from './flow';
+  import type { Flow } from '../api/types';
   import { resolveIcon } from './icons';
   import { stack as globalStack } from '$kitebase/stack/stack.svelte';
   import type { StackInstance } from '$kitebase/stack/stack.svelte';
@@ -90,7 +92,8 @@
     status?: FormStatus;
     toolbarExtra?: Snippet;
     onEvent?: (name: string, data: unknown) => void;
-    onSave?: (draft: Record<string, unknown>) => Promise<void> | void;
+    /** `flow`: what the rules of the write had to say, for the frame to apply. */
+    onSave?: (draft: Record<string, unknown>, flow?: Flow) => Promise<void> | void;
     onCancel?: () => void;
   }
 
@@ -716,17 +719,18 @@
         const fieldNames = new Set([...flatFields.map(f => f.name), ...frameFields]);
         const payload = Object.fromEntries(Object.entries(draft).filter(([k]) => fieldNames.has(k)));
         const id = resolveRecordId();
+        // Judged: the table's rules may ask before anything is written
         if (id === null || id === undefined) {
-          res = await api.endpoint('db', { table: src!.model, method: 'create', data: payload });
+          res = await callJudged('db', { table: src!.model, method: 'create', data: payload }, groupLabel);
         } else {
-          res = await api.endpoint('db', { table: src!.model, method: 'update', id, data: payload });
+          res = await callJudged('db', { table: src!.model, method: 'update', id, data: payload }, groupLabel);
         }
       } else if (src?.save_endpoint && persist) {
         // Step B: custom save endpoint
-        res = await api.endpoint(src.save_endpoint, {
+        res = await callJudged(src.save_endpoint, {
           ...resolvePass(src.pass ?? {}),
           data: { ...draft },
-        });
+        }, groupLabel);
       } else {
         // Step A: the record is someone else's to write — a caller holding local
         // data, or the frame that owns the aggregate. If it refuses, the form
@@ -734,6 +738,9 @@
         try {
           await onSave?.({ ...draft });
         } catch (e) {
+          // A question dismissed: nothing written, nothing to report, still dirty
+          if (e instanceof FlowCancelled) return;
+          if (e instanceof FlowRefused && e.patch) draft = { ...draft, ...e.patch };
           internalStatus = { message: e instanceof Error ? e.message : String(e), type: 'error' };
           return;
         }
@@ -742,7 +749,11 @@
         return;
       }
 
+      // A question dismissed: nothing written, nothing to report, still dirty
+      if (res.cancelled) return;
       if (res.status !== 'success') {
+        // A refusal may still set values: the rule says what to fill in
+        if (res.flow?.patch) draft = { ...draft, ...res.flow.patch };
         const errData = res.data as Record<string, unknown> | undefined;
         if (errData?.errors) {
           errors = errData.errors as Record<string, string>;
@@ -778,7 +789,7 @@
       internalStatus = { message: _('Saved'), type: 'success' };
       setTimeout(() => { if (internalStatus?.type === 'success') internalStatus = undefined; }, 3000);
       onEvent?.('form_save', { ...original });
-      await onSave?.({ ...original });
+      await onSave?.({ ...original }, res.flow);
     } finally {
       saving = false;
     }

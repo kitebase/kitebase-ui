@@ -28,10 +28,40 @@ export interface LoginCredentials {
   password: string;
 }
 
+/**
+ * What the rules of a write had to say (kitebase.flow on the server). A
+ * question arrives on a refusal (a caller that does not know the protocol
+ * never takes it for a save), and `callJudged` turns it into the dialog and
+ * the call sent again with the answer.
+ */
+export interface FlowQuestion {
+  key: string;
+  kind: 'confirm' | 'choose';
+  text: string;
+  /** The labels of a confirm: they say what each answer does. */
+  yes?: string;
+  no?: string;
+  /** The options of a choose. */
+  options?: Array<{ value: unknown; label: string }>;
+}
+
+export interface Flow {
+  ask?: FlowQuestion;
+  /** Lines for the person, shown with the outcome. */
+  info?: string[];
+  /** On a refusal, the values the form takes all the same. */
+  patch?: Record<string, unknown>;
+  /** Once saved: what the client does next, in the `resultAction` vocabulary. */
+  actions?: Array<Record<string, unknown>>;
+}
+
 export interface APIResponse<T = unknown> {
   status: 'success' | 'error';
   data?: T;
   message?: string;
+  flow?: Flow;
+  /** The person dismissed a question: nothing was written, nothing failed. */
+  cancelled?: boolean;
   /** Exception class name from Python (e.g. "ValueError", "ScannerError") */
   error_type?: string;
   /** Full Python traceback — always present on server-side errors */

@@ -226,6 +226,13 @@ export interface FormDescriptor {
   actions?: FormActions;
   policy?: FormPolicy;
   data_schema?: string;        // schema ID from plugin schemas: section
+  /**
+   * What this form does once it has saved, by mode: an action of the
+   * `resultAction` vocabulary, with `$record.x` in `params` read from the saved
+   * record. A reaction of the form, not a rule of the table: a write from
+   * anywhere else does not trigger it.
+   */
+  on_saved?: { insert?: Record<string, unknown>; update?: Record<string, unknown> };
   [key: string]: unknown;
 }
 
