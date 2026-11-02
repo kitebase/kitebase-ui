@@ -169,11 +169,17 @@ async function applyBody(body: Payload, ctx: ResultContext, fallback?: string): 
  */
 function pickFile(accept?: string): Promise<File | null> {
   return new Promise((resolve) => {
+    // In the document while it waits: some browsers do not tell an input that
+    // is not about the file chosen
     const input = document.createElement('input');
     input.type = 'file';
+    input.hidden = true;
+    input.dataset.kbPicker = '';
     if (accept) input.accept = accept;
-    input.addEventListener('change', () => resolve(input.files?.[0] ?? null), { once: true });
-    input.addEventListener('cancel', () => resolve(null), { once: true });
+    const done = (file: File | null) => { input.remove(); resolve(file); };
+    input.addEventListener('change', () => done(input.files?.[0] ?? null), { once: true });
+    input.addEventListener('cancel', () => done(null), { once: true });
+    document.body.appendChild(input);
     input.click();
   });
 }
