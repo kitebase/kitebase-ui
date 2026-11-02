@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   newAggregate, loadedAggregate, addRow, removeRow, setValues, serialize,
-  liveRows, rowsOf, isDirty, cloneNode, collectionNodes,
+  liveRows, rowsOf, isDirty, cloneNode, collectionNodes, snapshot, applyRows,
   type TreeNode,
 } from './aggregate';
 
@@ -209,5 +209,56 @@ describe('finding the collections a form declares', () => {
     }];
 
     expect(collectionNodes(layout).map((c) => c.id)).toEqual(['chapters']);
+  });
+});
+
+describe('what a proposal reads, and what it hands back', () => {
+  it('reads the whole document, with the draft over the stored values', () => {
+    const agg = loadedAggregate('book_form', loaded());
+    removeRow(agg.root, 'authors', 43);
+    addRow(agg, agg.root, 'authors', { author_id: 9 });
+
+    const doc = snapshot(agg.root, { title: 'Animal Farm' });
+
+    expect(doc.values.title).toBe('Animal Farm');
+    expect(doc.children.authors.map((r) => r.id)).toEqual([42, -1]);
+    expect('op' in doc.children.authors[0]).toBe(false);
+  });
+
+  it('touches the known rows, creates the new ones, removes the ones left out', () => {
+    const agg = loadedAggregate('book_form', loaded());
+
+    const moved = applyRows(agg, agg.root, 'authors', [
+      { id: 43, values: { author_id: 4, notes: 'second' } },
+      { values: { author_id: 5, notes: null } },
+    ]);
+
+    expect(moved).toBe(true);
+    expect(liveRows(agg.root, 'authors').map((r) => [r.id, r.values.notes]))
+      .toEqual([[43, 'second'], [-1, null]]);
+    const out = serialize(agg).root.children.authors;
+    expect(out).toContainEqual({ op: 'delete', id: 42, values: {}, children: {} });
+    expect(out).toContainEqual({ op: 'update', id: 43, values: { notes: 'second' }, children: {} });
+    expect(out.find((r) => r.op === 'create')?.values).toEqual({ author_id: 5, notes: null });
+  });
+
+  it('a row never written simply goes, and a row already going stays going', () => {
+    const agg = loadedAggregate('book_form', loaded());
+    removeRow(agg.root, 'authors', 43);
+    const fresh = addRow(agg, agg.root, 'authors', { author_id: 9 });
+
+    applyRows(agg, agg.root, 'authors', [{ id: 42, values: { author_id: 3, notes: 'first' } }]);
+
+    const ids = rowsOf(agg.root, 'authors').map((r) => [r.id, r.op]);
+    expect(ids).toEqual([[42, undefined], [43, 'delete']]);
+    expect(ids.some(([id]) => id === fresh.id)).toBe(false);
+  });
+
+  it('the same rows in the same order move nothing', () => {
+    const agg = loadedAggregate('book_form', loaded());
+    const same = snapshot(agg.root).children.authors.map((r) => ({ id: r.id, values: r.values }));
+
+    expect(applyRows(agg, agg.root, 'authors', same)).toBe(false);
+    expect(isDirty(agg.root)).toBe(false);
   });
 });

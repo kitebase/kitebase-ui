@@ -233,7 +233,24 @@ export interface FormDescriptor {
    * anywhere else does not trigger it.
    */
   on_saved?: { insert?: Record<string, unknown>; update?: Record<string, unknown> };
+  /**
+   * The form in steps: each phase draws some of the top nodes of `layout`, by
+   * id. Without phases the form is drawn whole, as always.
+   */
+  phases?: FormPhase[];
   [key: string]: unknown;
+}
+
+/** One step of a form: its nodes, what it shows once left, how it is left. */
+export interface FormPhase {
+  id: string;
+  label?: string;
+  /** Ids of top nodes of the layout. */
+  nodes: string[];
+  /** Fields shown, read only, in the bar the phase becomes once left behind. */
+  summary?: string[];
+  /** The step to the next phase: what the button says, and who judges it. */
+  next?: { endpoint?: string; label?: string };
 }
 
 // ── Toolbar status ──────────────────────────────────────────────────────────

@@ -35,7 +35,7 @@
   import PluginComponent from './PluginComponent.svelte';
   import { getPluginLoader } from '$kitebase/plugins/context';
   import FieldHelp from './widgets/FieldHelp.svelte';
-  import { _ } from '../i18n';
+  import { _, _t } from '../i18n';
   import { serverConfig } from '../api/serverConfig.svelte';
   import { authStore } from '../auth/store.svelte';
   import type { SchemaFieldInfo } from '../api/serverConfig.svelte';
@@ -48,12 +48,14 @@
   import { stack as globalStack } from '$kitebase/stack/stack.svelte';
   import type { StackInstance } from '$kitebase/stack/stack.svelte';
   import { getContext } from 'svelte';
-  import { isDirty, liveRows, type Aggregate, type TreeNode } from './aggregate';
+  import {
+    isDirty, liveRows, snapshot, applyRows, type Aggregate, type TreeNode, type RowPatch,
+  } from './aggregate';
   import { resolveRecordTokens } from './record';
   import { lookupFilters } from './lookup';
   import { isDateOnly, withTimeNow, plausibleYear } from './datetime';
   import type {
-    FormDescriptor, FormField, FormStatus,
+    FormDescriptor, FormField, FormStatus, FormPhase,
     LayoutNode, SectionNode, SectionField, FillerField, ColumnDef,
     LabelNode, TabsNode, RowNode, CollectionNode, ButtonNode,
   } from './dataform.types';
@@ -698,10 +700,98 @@
     }
   }
 
+  // ── Phases ─────────────────────────────────────────────────────────────────
+  // A form in steps draws the top nodes of its layout one phase at a time, and
+  // always opens on the first: new or not, the header is where a document is
+  // read and judged. The steps already taken shrink into a bar above, which
+  // leads back to them. The primary action leaves the phase; only the last saves.
+
+  let phases = $derived((view.phases ?? []) as FormPhase[]);
+  let phaseIdx = $state(0);
+  let phase = $derived(phases[phaseIdx] as FormPhase | undefined);
+  let onLastPhase = $derived(phaseIdx >= phases.length - 1);
+  let stepping = $state(false);
+
+  function phaseNodes(p: FormPhase): LayoutNode[] {
+    const ids = new Set(p.nodes);
+    return ((view.layout ?? []) as LayoutNode[])
+      .filter((n) => typeof (n as { id?: unknown }).id === 'string' && ids.has((n as { id: string }).id));
+  }
+
+  function phaseFields(p: FormPhase): FormField[] {
+    return extractLayoutFields(phaseNodes(p)).filter((f) => !hideFields.includes(f.name));
+  }
+
+  async function enterPhase(index: number) {
+    phaseIdx = index;
+    internalStatus = undefined;
+    await tick();
+    focusFirstField();
+  }
+
+  /**
+   * Leave the phase forward. Its fields first, then its judge, if it has one: the
+   * document as it stands goes to the server, which asks, refuses or answers
+   * with what to change, header and rows. Nothing is written here; the save is.
+   */
+  async function nextPhase() {
+    const current = phase;
+    if (!current || stepping) return;
+    let valid = true;
+    for (const f of phaseFields(current)) if (!validateField(f.name)) valid = false;
+    if (!valid) { focusFirstError(); return; }
+
+    const endpoint = current.next?.endpoint;
+    if (endpoint) {
+      stepping = true;
+      internalStatus = undefined;
+      try {
+        const tree = buffer
+          ? snapshot(buffer.node, draft)
+          : { id: resolveRecordId() ?? -1, values: { ...draft }, children: {} };
+        const res = await callJudged<ProposalPatch>(endpoint, { tree }, groupLabel);
+        // A question answered no: the phase stays, as the person chose
+        if (res.cancelled) return;
+        if (res.status !== 'success') {
+          if (res.flow?.patch) draft = { ...draft, ...res.flow.patch };
+          internalStatus = { message: res.message ?? _('Error'), type: 'error' };
+          return;
+        }
+        applyProposal(res.data);
+        if (res.flow?.info?.length) await msgbox.alert(res.flow.info.join('\n'), groupLabel);
+      } finally {
+        stepping = false;
+      }
+    }
+    await enterPhase(phaseIdx + 1);
+  }
+
+  interface ProposalPatch {
+    values?: Record<string, unknown>;
+    rows?: Record<string, RowPatch[]>;
+  }
+
+  function applyProposal(patch: ProposalPatch | undefined) {
+    if (!patch) return;
+    if (patch.values) draft = { ...draft, ...patch.values };
+    if (patch.rows && buffer) {
+      for (const [cid, rows] of Object.entries(patch.rows)) applyRows(buffer.agg, buffer.node, cid, rows);
+    }
+  }
+
+  /** Save on the last phase, step forward on the others: one key for both. */
+  function primaryAction() {
+    if (phases.length > 0 && !onLastPhase) nextPhase();
+    else handleSave();
+  }
+
   // ── Save / Cancel ──────────────────────────────────────────────────────────
 
   async function handleSave() {
     if (!validateAll()) {
+      // A field of a phase left behind: back there, where it can be fixed
+      const at = phases.findIndex((p) => phaseFields(p).some((f) => f.name in errors));
+      if (at >= 0 && at !== phaseIdx) { phaseIdx = at; await tick(); }
       focusFirstError();
       return;
     }
@@ -823,10 +913,13 @@
     if (!isEditable) return;
     if (e.key === 'Escape') {
       e.stopPropagation();
-      handleCancel();
+      // Past the first step, Esc steps back: leaving the document is the first
+      // step's Esc, as it is a form's
+      if (phaseIdx > 0) enterPhase(phaseIdx - 1);
+      else handleCancel();
     } else if (e.key === 'F12' || (e.key === 'Enter' && e.ctrlKey)) {
       e.preventDefault();
-      handleSave();
+      primaryAction();
     }
   }
 
@@ -869,7 +962,10 @@
     if (autofocusName) {
       focusableOf(fieldAreaEl.querySelector(`[data-field="${autofocusName}"]`))?.focus();
     } else {
-      fieldAreaEl.querySelector<HTMLElement>(FOCUSABLE_SEL)?.focus();
+      // A step of rows has no field: its grid takes the keyboard instead
+      const target = fieldAreaEl.querySelector<HTMLElement>(FOCUSABLE_SEL)
+        ?? fieldAreaEl.querySelector<HTMLElement>('.kb-datatable');
+      target?.focus();
     }
   }
 
@@ -962,6 +1058,13 @@
         <span class="text-sm">{_('Loading…')}</span>
       </div>
 
+    {:else if view.layout && phase}
+      {@render phaseSteps()}
+      {#each phases.slice(0, phaseIdx) as done, i (done.id)}
+        {@render phaseSummary(done, i)}
+      {/each}
+      {@render renderLayout(phaseNodes(phase), groupLabel)}
+
     {:else if view.layout}
       {@render renderLayout(view.layout as LayoutNode[], groupLabel)}
 
@@ -1025,7 +1128,17 @@
 {#snippet actionButtons()}
   {#if isEditable}
     {#each toolbarActions as action (action.id)}
-      {#if action.id === 'save'}
+      {#if action.id === 'save' && phases.length > 0 && !onLastPhase}
+        <!-- Not the last step: the primary action leaves it, and says where to -->
+        <button
+          class="btn btn-primary py-1.5 text-xs"
+          disabled={saving || stepping}
+          onclick={nextPhase}
+          title={_('Next (F12 or Ctrl+Enter)')}
+        >
+          {phase?.next?.label ?? _('Next')}
+        </button>
+      {:else if action.id === 'save'}
         <button
           class="btn btn-primary py-1.5 text-xs"
           disabled={saving}
@@ -1043,6 +1156,15 @@
           {/if}
         </button>
       {:else if action.id === 'cancel'}
+        {#if phaseIdx > 0}
+          <button
+            class="btn btn-secondary py-1.5 text-xs"
+            disabled={saving || stepping}
+            onclick={() => enterPhase(phaseIdx - 1)}
+          >
+            {_('Back')}
+          </button>
+        {/if}
         <button
           class="btn btn-secondary py-1.5 text-xs"
           disabled={saving}
@@ -1440,6 +1562,39 @@
   </div>
 {/snippet}
 
+{#snippet phaseSteps()}
+  <!-- The steps, named: where the person is, what is behind (a way back), what
+       is still ahead. -->
+  <ol class="kb-phase-steps">
+    {#each phases as p, i (p.id)}
+      <li class="kb-phase-step" class:current={i === phaseIdx} class:done={i < phaseIdx}>
+        {#if i < phaseIdx}
+          <button type="button" onclick={() => enterPhase(i)}>
+            <span class="kb-phase-num">{i + 1}</span>{p.label ?? p.id}
+          </button>
+        {:else}
+          <span aria-current={i === phaseIdx ? 'step' : undefined}>
+            <span class="kb-phase-num">{i + 1}</span>{p.label ?? p.id}
+          </span>
+        {/if}
+      </li>
+    {/each}
+  </ol>
+{/snippet}
+
+{#snippet phaseSummary(p: FormPhase, index: number)}
+  {@const shown = (p.summary ?? [])
+    .map((name) => flatFields.find((f) => f.name === name))
+    .filter((f): f is FormField => !!f)}
+  <!-- What a phase left behind filled in, read only; a click goes back to it. -->
+  <button type="button" class="kb-phase-summary" onclick={() => enterPhase(index)}
+          title={_t('Back to {step}', { step: p.label ?? p.id })}>
+    {#each shown as f (f.name)}
+      <div class="kb-phase-summary-field">{@render fieldContent({ ...f, readonly: true })}</div>
+    {/each}
+  </button>
+{/snippet}
+
 {#snippet rowNode(node: RowNode)}
   <div class="mb-4 flex gap-4">
     {#each node.children as col}
@@ -1449,3 +1604,71 @@
     {/each}
   </div>
 {/snippet}
+
+<style>
+  .kb-phase-steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1.5rem;
+    margin: 0 0 1rem;
+    padding: 0;
+    list-style: none;
+    font-size: 0.8rem;
+  }
+
+  .kb-phase-step > span,
+  .kb-phase-step > button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--kb-text-subtle);
+    font: inherit;
+  }
+
+  .kb-phase-step > button { cursor: pointer; }
+  .kb-phase-step > button:hover { color: var(--kb-text); }
+  .kb-phase-step.current > span { color: var(--kb-text); font-weight: 600; }
+
+  .kb-phase-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.3rem;
+    height: 1.3rem;
+    border: 1px solid var(--kb-border);
+    border-radius: 999px;
+    font-size: 0.7rem;
+  }
+
+  .kb-phase-step.current .kb-phase-num {
+    border-color: var(--kb-brand, #3b82f6);
+    background: var(--kb-brand, #3b82f6);
+    color: var(--kb-bg, #fff);
+  }
+
+  .kb-phase-step.done .kb-phase-num { border-color: var(--kb-brand, #3b82f6); color: var(--kb-brand, #3b82f6); }
+
+  /* A bar, not a form: the read-only widgets lose their boxes and labels shrink */
+  .kb-phase-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 2rem;
+    width: 100%;
+    margin-bottom: 1rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--kb-border);
+    border-radius: 0.375rem;
+    background: var(--kb-surface-subtle);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .kb-phase-summary:hover { border-color: var(--kb-text-subtle); }
+  .kb-phase-summary-field { min-width: 0; pointer-events: none; }
+  .kb-phase-summary-field :global(label) { margin-bottom: 0; font-size: 0.7rem; color: var(--kb-text-subtle); }
+  .kb-phase-summary-field :global(span) { padding: 0; border: none; background: none; }
+  .kb-phase-summary-field :global(.text-danger) { display: none; }
+</style>

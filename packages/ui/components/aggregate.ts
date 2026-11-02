@@ -215,6 +215,70 @@ export function removeRow(parent: TreeNode, cid: string, id: number): void {
   rows[index].op = 'delete';
 }
 
+// ── Proposals ───────────────────────────────────────────────────────────────
+
+/**
+ * The document as a proposal reads it: the values and the live rows, at every
+ * depth. Unlike `serialize` nothing is pruned: a proposal judges the whole
+ * document, not what changed. `values` replaces the node's own, for the draft a
+ * form holds before it hands it to the buffer.
+ */
+export function snapshot(node: TreeNode, values?: Record<string, unknown>): TreeNode {
+  const children: Record<string, TreeNode[]> = {};
+  for (const cid of Object.keys(node.children)) {
+    children[cid] = liveRows(node, cid).map((row) => snapshot(row));
+  }
+  return { id: node.id, values: { ...(values ?? node.values) }, children };
+}
+
+/** A row as a proposal returns it: an id the buffer knows, or none for a new one. */
+export interface RowPatch {
+  id?: number | null;
+  values: Record<string, unknown>;
+}
+
+/**
+ * Make a collection what a proposal says it should be. Returns true when
+ * anything moved.
+ *
+ * A row the buffer knows takes the values that differ; a row without a known id
+ * is created; a live row the proposal left out is removed, as the user would
+ * remove it. The rows end up in the proposal's order.
+ */
+export function applyRows(agg: Aggregate, parent: TreeNode, cid: string, rows: RowPatch[]): boolean {
+  const current = rowsOf(parent, cid);
+  const live = new Map(current.filter((row) => row.op !== 'delete').map((row) => [row.id, row]));
+  const kept: TreeNode[] = [];
+  let changed = false;
+
+  for (const patch of rows) {
+    const row = patch.id != null ? live.get(patch.id) : undefined;
+    if (row) {
+      live.delete(row.id);
+      if (setValues(row, patch.values)) changed = true;
+      kept.push(row);
+    } else {
+      kept.push(newRow(agg, patch.values));
+      changed = true;
+    }
+  }
+
+  // What the proposal left out goes; what was already going stays going
+  const going = current.filter((row) => row.op === 'delete');
+  for (const row of live.values()) {
+    changed = true;
+    if (row.id >= 0) {
+      row.op = 'delete';
+      going.push(row);
+    }
+  }
+
+  const order = (list: TreeNode[]) => list.map((row) => row.id).join(',');
+  if (order(kept) !== order(current.filter((row) => row.op !== 'delete'))) changed = true;
+  parent.children[cid] = [...kept, ...going];
+  return changed;
+}
+
 // ── Serialization ───────────────────────────────────────────────────────────
 
 /**
