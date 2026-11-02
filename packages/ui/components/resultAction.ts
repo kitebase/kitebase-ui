@@ -22,6 +22,10 @@
  *       a page on the stack, or a dialog when the view says `presentation:
  *       dialog`; its values are merged into `then.params`, and `then` is
  *       applied with these same rules. Cancel ends the chain
+ *   {action: 'upload', op, params, accept?}                      → a file to send:
+ *       the browser's file picker, then the call to the upload route with the
+ *       file; its questions are asked and the same file sent again with the
+ *       answers, and the answer is applied with these same rules
  *   {action: 'set_query_params', params}                         → keys the view
  *       carries on every query from now on
  *
@@ -38,6 +42,7 @@ import { _ } from '../i18n';
 import PanelPage from './PanelPage.svelte';
 import FormStepPage from './FormStepPage.svelte';
 import { formDialog } from './formDialog.svelte';
+import { callJudged, presentOutcome } from './flow';
 import type { FormDescriptor } from './dataform.types';
 import type { StackInstance } from '$kitebase/stack/stack.svelte';
 
@@ -128,6 +133,19 @@ async function applyBody(body: Payload, ctx: ResultContext, fallback?: string): 
       return;
     }
 
+    case 'upload': {
+      if (typeof body.op !== 'string') return;
+      const accept = Array.isArray(body.accept) ? (body.accept as string[]).join(',') : undefined;
+      const file = await pickFile(accept);
+      if (!file) return;               // the picker closed: nothing asked, nothing done
+      const res = await callJudged(body.op, (body.params ?? {}) as Payload, ctx.title,
+                                   (op, params) => api.sendFile(op, params, file));
+      if (res.cancelled) return;
+      if (res.status === 'success' && res.flow) await presentOutcome(res.flow, ctx);
+      await applyResult(res, ctx);
+      return;
+    }
+
     case 'set_query_params':
       ctx.setQueryParams?.((body.params ?? {}) as Payload);
       return;
@@ -143,4 +161,19 @@ async function applyBody(body: Payload, ctx: ResultContext, fallback?: string): 
   });
   if (Array.isArray(body.touched) && ctx.refreshRows) await ctx.refreshRows(body.touched);
   else ctx.reload?.();
+}
+
+/**
+ * The browser's file picker, for one file. Null when it closes without one:
+ * `cancel` is how the input says so, where the browser supports it.
+ */
+function pickFile(accept?: string): Promise<File | null> {
+  return new Promise((resolve) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    if (accept) input.accept = accept;
+    input.addEventListener('change', () => resolve(input.files?.[0] ?? null), { once: true });
+    input.addEventListener('cancel', () => resolve(null), { once: true });
+    input.click();
+  });
 }

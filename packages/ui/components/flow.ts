@@ -20,12 +20,16 @@ import { _ } from '../i18n';
 // A rule that asks a new question at every answer would never end.
 const MAX_QUESTIONS = 20;
 
+/** How the call goes out: the dispatcher, unless it carries a file. */
+export type Caller = <T>(op: string, params: Record<string, unknown>) => Promise<APIResponse<T>>;
+
 export async function callJudged<T = unknown>(
   op: string, params: Record<string, unknown>, title?: string,
+  call: Caller = (o, p) => api.endpoint(o, p),
 ): Promise<APIResponse<T>> {
   const answers: Record<string, unknown> = {};
   for (let i = 0; i < MAX_QUESTIONS; i++) {
-    const res = await api.endpoint<T>(op, i === 0 ? params : { ...params, answers });
+    const res = await call<T>(op, i === 0 ? params : { ...params, answers });
     const question = res.flow?.ask;
     // Asked again what it was told: the rule ignores its answer, and looping
     // would not change that.

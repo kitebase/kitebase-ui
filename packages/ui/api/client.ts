@@ -239,6 +239,30 @@ class KitebaseAPI {
     }
   }
 
+  // ── A file to an operation — POST /upload/{operation} ─────────────────────
+  //
+  // The twin of `download`: an operation that takes a file (a sheet to import).
+  // The parameters travel as JSON beside the file, and the answer is the
+  // dispatcher's, a question included: the caller sends the same file again
+  // with the answer.
+
+  async sendFile<T = unknown>(operation: string, params: unknown, file: File): Promise<APIResponse<T>> {
+    const form = new FormData();
+    form.append('params', JSON.stringify(params ?? {}));
+    form.append('file', file, file.name);
+    try {
+      const res = await this.client.post<any>(`/upload/${operation}`, form, {
+        headers: { 'Content-Type': undefined },
+        timeout: DOWNLOAD_TIMEOUT,
+      });
+      const d = res.data;
+      if (d?.status === 'success') return { status: 'success', data: d.data, message: d.message, flow: d['$flow'] };
+      return errorOf<T>(d);
+    } catch (err: any) {
+      return errorOf<T>(err.response?.data, 'Upload failed');
+    }
+  }
+
   // ── Media — POST /upload ──────────────────────────────────────────────────
   //
   // A file for a media column, multipart. The server checks the bytes,
