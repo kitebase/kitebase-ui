@@ -24,6 +24,7 @@
   import WidgetText from './widgets/WidgetText.svelte';
   import WidgetTextarea from './widgets/WidgetTextarea.svelte';
   import WidgetNumber from './widgets/WidgetNumber.svelte';
+  import { numberShape, numberWidthCh } from './widgets/number';
   import WidgetDate from './widgets/WidgetDate.svelte';
   import WidgetBoolean from './widgets/WidgetBoolean.svelte';
   import WidgetCombobox from './widgets/WidgetCombobox.svelte';
@@ -302,9 +303,19 @@
     return groups;
   }
 
+  /**
+   * The width of a field: the one the form gives, or for a number the room its
+   * digits need (widgets/number.ts), so a price does not stretch across the
+   * line. Nothing for the others: they share the line.
+   */
+  function widthOf(field: FormField): string | number | undefined {
+    if (field.width != null) return field.width;
+    return resolveWidget(field) === 'number' ? `${numberWidthCh(numberShape(field))}ch` : undefined;
+  }
+
   // CSS style for a field in a multi-field row
   function fieldWidthStyle(field: FormField): string {
-    const w = field.width;
+    const w = widthOf(field);
     if (w == null) return 'flex: 1 1 0; min-width: 0';
     if (typeof w === 'number') return `width: ${w}px; flex: none`;
     return `width: ${w}; flex: none`;
@@ -331,6 +342,12 @@
   // ── Widget resolution ──────────────────────────────────────────────────────
 
   function resolveWidget(field: FormField): string {
+    const w = baseWidget(field);
+    // Money and percentages are numbers: the widget reads which from the field
+    return w === 'currency' || w === 'percent' ? 'number' : w;
+  }
+
+  function baseWidget(field: FormField): string {
     if (field.widget) return field.widget as string;
     if (field.foreign_key) return 'fk';
     if (mediaColumns.has(field.name)) return mediaColumns.get(field.name)!.media === 'files' ? 'files' : 'media';
@@ -1096,7 +1113,9 @@
 
       {#each fieldGroups as group (group[0].name)}
         {#if group.length === 1}
-          <div class="mb-4" data-field={group[0].name}>
+          {@const own = widthOf(group[0])}
+          <div class="mb-4" style={own != null && group[0].width == null ? `max-width: ${own}` : ''}
+               data-field={group[0].name}>
             {@render fieldContent(group[0])}
           </div>
         {:else}
@@ -1454,7 +1473,7 @@
         {@const f = item as SectionField}
         <div
           class="mb-4 min-w-0"
-          style={columnFieldFlex(f.width)}
+          style={columnFieldFlex(widthOf(f))}
           data-field={f.name}
         >
           {@render fieldContent(f)}
