@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   newAggregate, loadedAggregate, draftAggregate, addRow, removeRow, setValues, serialize,
   liveRows, rowsOf, isDirty, cloneNode, collectionNodes, snapshot, applyRows,
+  moveRows, moveRow, renumber,
   type TreeNode,
 } from './aggregate';
 
@@ -281,5 +282,41 @@ describe('what a proposal reads, and what it hands back', () => {
 
     expect(applyRows(agg, agg.root, 'authors', same)).toBe(false);
     expect(isDirty(agg.root)).toBe(false);
+  });
+});
+
+
+describe('the order of the rows', () => {
+  const lines = (): TreeNode => ({
+    id: 1, values: {},
+    children: { lines: [
+      { id: 10, values: { book: 'a', sequence: 1 }, children: {} },
+      { id: 11, values: { book: 'b', sequence: 2 }, children: {} },
+      { id: 12, values: { book: 'gone', sequence: 3 }, children: {}, op: 'delete' },
+      { id: -2, values: { book: 'new', sequence: 0 }, children: {}, op: 'create' },
+    ] },
+  });
+  const books = (node: TreeNode) => node.children.lines.map((r) => r.values.book);
+
+  it('follows the order the grid shows, the rows going out stay at the end', () => {
+    const node = lines();
+    moveRows(node, 'lines', [-2, 10, 11]);
+    expect(books(node)).toEqual(['new', 'a', 'b', 'gone']);
+  });
+
+  it('moves one row a step, and nowhere past an end', () => {
+    const node = lines();
+    moveRow(node, 'lines', -2, -1);
+    expect(books(node)).toEqual(['a', 'new', 'b', 'gone']);
+    moveRow(node, 'lines', 10, -1);
+    expect(books(node)).toEqual(['a', 'new', 'b', 'gone']);
+  });
+
+  it('numbers the live rows from 1, and only a changed number is a change', () => {
+    const node = lines();
+    moveRows(node, 'lines', [10, -2, 11]);
+    renumber(node, 'lines', 'sequence');
+    expect(liveRows(node, 'lines').map((r) => [r.values.book, r.values.sequence, r.op]))
+      .toEqual([['a', 1, undefined], ['new', 2, 'create'], ['b', 3, 'update']]);
   });
 });

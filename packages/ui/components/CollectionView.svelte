@@ -29,6 +29,7 @@
   import { fkSpecs, missingKeys, withLabels, type LabelCache } from './fkLabels';
   import {
     liveRows, rowsOf, newRow, attachRow, replaceRow, removeRow, cloneNode,
+    moveRows, moveRow, renumber,
     type Aggregate, type TreeNode,
   } from './aggregate';
   import { rowDefaults } from './record';
@@ -122,10 +123,16 @@
     labels = { ...labels, [spec.key]: found };
   }
 
+  // A declared sequence: the order is the buffer's, so the grid sorts nothing
+  // on its own and the rows move by hand
+  const movable = $derived(!!node.sequence && !readonly);
+
   const view = $derived<ViewDescriptor>({
     type: 'table',
     ...(node.view ?? {}),
-    source: { ...((node.view?.source as object) ?? {}), model: node.model },
+    source: node.sequence
+      ? { ...omitOrder((node.view?.source as Record<string, unknown>) ?? {}), model: node.model }
+      : { ...((node.view?.source as object) ?? {}), model: node.model },
     // Read-only leaves nothing to offer: the three gestures are gone, and there
     // is no set to search, filter or re-query — the rows arrived with the parent
     // and leave with it. So the bar goes too, rather than sitting there empty.
@@ -134,6 +141,11 @@
       mode: 'buffered',
     },
   } as ViewDescriptor);
+
+  function omitOrder(source: Record<string, unknown>): Record<string, unknown> {
+    const { order_by: _, ...rest } = source;
+    return rest;
+  }
 
   /**
    * From the row object the grid handed back to the node that holds it.
@@ -165,7 +177,7 @@
    */
   function openRow(target: TreeNode, isNew: boolean) {
     const editing = cloneNode(target);
-    const stamped = Object.keys(node.defaults ?? {});
+    const stamped = [...Object.keys(node.defaults ?? {}), ...(node.sequence ? [node.sequence] : [])];
 
     stack.push(DataFormView, {
       formId,
@@ -190,6 +202,17 @@
   }
 
   function handleEvent(name: string, data: unknown) {
+    if (name === 'rows_moved' && node.sequence) {
+      moveRows(parent, node.id, data as unknown[]);
+      renumber(parent, node.id, node.sequence);
+      return;
+    }
+    if (name === 'row_move' && node.sequence) {
+      const { id, delta } = data as { id: number; delta: -1 | 1 };
+      moveRow(parent, node.id, id, delta);
+      renumber(parent, node.id, node.sequence);
+      return;
+    }
     if (name === 'row_command') {
       const { command, label, current, checked, visible } = data as {
         command: { endpoint?: string }; label?: string; current?: unknown; checked: unknown[];
@@ -216,7 +239,7 @@
     <div class="kb-collection-label">{node.label}</div>
   {/if}
   <div class="kb-collection-grid" style={gridStyle}>
-    <DataView {view} data={rows} onEvent={handleEvent} />
+    <DataView {view} data={rows} movableRows={movable} onEvent={handleEvent} />
   </div>
 </div>
 

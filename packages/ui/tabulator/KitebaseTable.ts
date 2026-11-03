@@ -42,6 +42,7 @@ export class KitebaseTable {
   // Selection state — prevents selection feedback loop on plain row clicks
   private _savedSel: any[] = [];
   private _restoringsel = false;
+  private _reorder = false;
 
   private constructor(table: any, container: HTMLElement, config: KitebaseTableConfig) {
     this.table = table;
@@ -88,8 +89,25 @@ export class KitebaseTable {
     return data.map((row) => (row && typeof row === 'object' ? { _meta: {}, ...row } : row));
   }
 
-  private static _buildCols(columns: ColumnDef[], selectable: boolean, filterMode: boolean): any[] {
+  private static _buildCols(columns: ColumnDef[], selectable: boolean, filterMode: boolean,
+                            reorder = false): any[] {
     const cols: any[] = [];
+
+    if (reorder) {
+      cols.push({
+        field: '_handle',
+        rowHandle: true,
+        formatter: 'handle',
+        headerSort: false,
+        hozAlign: 'center',
+        width: 30,
+        minWidth: 30,
+        maxWidth: 30,
+        frozen: true,
+        cssClass: 'kb-col-handle',
+        download: false
+      });
+    }
 
     if (selectable) {
       cols.push({
@@ -115,7 +133,8 @@ export class KitebaseTable {
         field: c.field,
         title: c.title ?? c.field,
         hozAlign: c.hozAlign ?? 'left',
-        headerSort: c.headerSort !== false,
+        // Reordering by hand: the order is the rows', a column sort would hide it
+        headerSort: !reorder && c.headerSort !== false,
         visible: c.visible !== false
       };
       if (filterMode) {
@@ -202,6 +221,8 @@ export class KitebaseTable {
       };
     }
 
+    if (config.movableRows) opts.movableRows = true;
+
     if (config.initialSort.length > 0) {
       opts.initialSort = config.initialSort.map((s) => ({ column: s.field, dir: s.dir }));
     }
@@ -269,6 +290,10 @@ export class KitebaseTable {
       cfg.onSorted?.();
     });
 
+    t.on('rowMoved', () => {
+      cfg.onRowsMoved?.(t.getRows().map((r: any) => r.getData()?.id));
+    });
+
     // Re-apply active row CSS after virtual scroll element recycling.
     t.on('renderRow', (row: any) => {
       if (this._activeRowId === null) return;
@@ -317,6 +342,14 @@ export class KitebaseTable {
     // Ignore shortcuts when focus is inside an input/textarea (e.g. header filters)
     const target = e.target as HTMLElement;
     const inInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+
+    // Alt+Up / Alt+Down → move the current row, in reorder mode
+    if (!inInput && e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')
+        && this._reorder && this._activeRow) {
+      e.preventDefault();
+      this.config.onRowMoveKey?.(this._activeRowId, e.key === 'ArrowUp' ? -1 : 1);
+      return;
+    }
 
     if (!inInput) {
       // Ins / + → Add
@@ -485,7 +518,16 @@ export class KitebaseTable {
     this.config.columns = columns;
     this.config.selectable = selectable;
     this.config.filterMode = filterMode;
-    this.table?.setColumns(KitebaseTable._buildCols(columns, selectable, filterMode));
+    this.table?.setColumns(KitebaseTable._buildCols(columns, selectable, filterMode, this._reorder));
+  }
+
+  /** Reorder mode, where the rows are movable: the handle, no column sort. */
+  setReorder(on: boolean) {
+    if (!this.config.movableRows || on === this._reorder) return;
+    this._reorder = on;
+    if (on) this.table?.clearSort();
+    this.table?.setColumns(KitebaseTable._buildCols(
+      this.config.columns, this.config.selectable, this.config.filterMode, on));
   }
 
   /** Replace all data (injects _meta into new rows). */

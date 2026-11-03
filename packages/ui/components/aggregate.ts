@@ -305,6 +305,43 @@ export function applyRows(agg: Aggregate, parent: TreeNode, cid: string, rows: R
   return changed;
 }
 
+// ── Order ───────────────────────────────────────────────────────────────────
+
+/**
+ * The live rows of a collection in the order of `ids` (what the grid shows
+ * after a drag). A row the list does not name keeps its place after the
+ * named ones; the rows on their way out stay at the end, where they were.
+ */
+export function moveRows(parent: TreeNode, cid: string, ids: unknown[]): void {
+  const current = rowsOf(parent, cid);
+  const live = current.filter((row) => row.op !== 'delete');
+  const going = current.filter((row) => row.op === 'delete');
+  const at = new Map(ids.map((id, i) => [id, i]));
+  const named = live.filter((row) => at.has(row.id)).sort((a, b) => at.get(a.id)! - at.get(b.id)!);
+  parent.children[cid] = [...named, ...live.filter((row) => !at.has(row.id)), ...going];
+}
+
+/** One row a step up (-1) or down (1) among the live ones; at an end, nothing. */
+export function moveRow(parent: TreeNode, cid: string, id: number, delta: -1 | 1): void {
+  const ids = liveRows(parent, cid).map((row) => row.id);
+  const from = ids.indexOf(id);
+  const to = from + delta;
+  if (from < 0 || to < 0 || to >= ids.length) return;
+  [ids[from], ids[to]] = [ids[to], ids[from]];
+  moveRows(parent, cid, ids);
+}
+
+/**
+ * Number the live rows 1, 2, 3 in their order, in the column a collection
+ * declares as its `sequence`: a row whose number changes is a change to save,
+ * a new one (0) gets the number of its place.
+ */
+export function renumber(parent: TreeNode, cid: string, field: string): void {
+  liveRows(parent, cid).forEach((row, i) => {
+    if (row.values[field] !== i + 1) setValues(row, { [field]: i + 1 });
+  });
+}
+
 // ── Serialization ───────────────────────────────────────────────────────────
 
 /**

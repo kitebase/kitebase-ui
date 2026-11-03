@@ -165,6 +165,13 @@ export interface CollectionNode {
   defaults?: Record<string, unknown>;
   /** Initial values of a new row, `$record.x` read from the parent's draft; editable. */
   prefill?: Record<string, unknown>;
+  /**
+   * The column that keeps the order the reader gives the rows. Declared, the
+   * rows move by hand (handle, Alt+Up / Alt+Down), are numbered 1, 2, 3 when
+   * the tree is saved, and the row's form leaves the field out: the order is
+   * the collection's to say, as the foreign key is.
+   */
+  sequence?: string;
   view?: Record<string, unknown>;
   /** Grid height: a CSS length, or `fill` to take what the container gives. */
   height?: string;

@@ -18,7 +18,7 @@
     Funnel, Search,
     Group, Download, Printer,
     RefreshCw, Ellipsis,
-    ChevronDown, SquareCheckBig, Zap,
+    ChevronDown, SquareCheckBig, Zap, ArrowUpDown,
     Table2, LayoutGrid, ListTree,
   } from 'lucide-svelte';
   import type { NavigatorConfig, CommandItem } from './dataview.types';
@@ -50,6 +50,9 @@
     onAccept = undefined as (() => void) | undefined,
     onCancel = undefined as (() => void) | undefined,
     selectMode = false,
+    movable = false,
+    reorderMode = false,
+    onToggleReorder = undefined as (() => void) | undefined,
     onToggleFilter = undefined as (() => void) | undefined,
     onToggleSelect = undefined as (() => void) | undefined,
     onExport = undefined as (() => void) | undefined,
@@ -88,6 +91,10 @@
     onAccept?: () => void;
     onCancel?: () => void;
     selectMode?: boolean;
+    /** Rows ordered by hand (a collection with a sequence): the reorder button. */
+    movable?: boolean;
+    reorderMode?: boolean;
+    onToggleReorder?: () => void;
     onToggleFilter?: () => void;
     onToggleSelect?: () => void;
     onExport?: () => void;
@@ -309,6 +316,19 @@
         onclick={onToggleSelect}
       >
         <SquareCheckBig size={14} />
+      </button>
+    {/if}
+
+    <!-- Reorder: the rows move by hand, by the handle or Alt+Up / Alt+Down -->
+    {#if movable}
+      <button
+        class="kb-nav-btn"
+        class:kb-nav-btn-active={reorderMode}
+        title={_('Reorder the rows')}
+        aria-pressed={reorderMode}
+        onclick={onToggleReorder}
+      >
+        <ArrowUpDown size={14} />
       </button>
     {/if}
 

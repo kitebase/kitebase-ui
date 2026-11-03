@@ -28,6 +28,10 @@
     onDataLoaded = undefined as ((count: number) => void) | undefined,
     onFiltered = undefined as ((count: number) => void) | undefined,
     onSorted = undefined as (() => void) | undefined,
+    movableRows = false,
+    reorder = false,
+    onRowsMoved = undefined as ((ids: unknown[]) => void) | undefined,
+    onRowMoveKey = undefined as ((id: unknown, delta: -1 | 1) => void) | undefined,
     onReady = undefined as (() => void) | undefined,
     onNavAdd = undefined as (() => void) | undefined,
     onNavEdit = undefined as (() => void) | undefined,
@@ -52,6 +56,10 @@
     onDataLoaded?: (count: number) => void;
     onFiltered?: (count: number) => void;
     onSorted?: () => void;
+    movableRows?: boolean;
+    reorder?: boolean;
+    onRowsMoved?: (ids: unknown[]) => void;
+    onRowMoveKey?: (id: unknown, delta: -1 | 1) => void;
     onReady?: () => void;
     onNavAdd?: () => void;
     onNavEdit?: () => void;
@@ -105,6 +113,10 @@
   {onDataLoaded}
   {onFiltered}
   {onSorted}
+  {movableRows}
+  {reorder}
+  {onRowsMoved}
+  {onRowMoveKey}
   {onReady}
   {onNavAdd}
   {onNavEdit}

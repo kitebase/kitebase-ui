@@ -54,6 +54,16 @@ export interface KitebaseTableConfig {
   onFiltered?: (count: number) => void;
   onSorted?: () => void;
   onReady?: () => void;
+  /**
+   * The rows can be moved: the order is the data's (a declared sequence), not
+   * the grid's. Moving happens in reorder mode only (`setReorder`): the handle
+   * shows, Alt+Up / Alt+Down work, and the columns do not sort, so a row moved
+   * always has a place to stay. The grid tells the new order, or the move
+   * asked from the keyboard, and the owner of the rows decides.
+   */
+  movableRows?: boolean;
+  onRowsMoved?: (ids: unknown[]) => void;
+  onRowMoveKey?: (id: unknown, delta: -1 | 1) => void;
   // Navigator action callbacks — fired by keyboard shortcuts
   onNavAdd?: () => void;
   onNavEdit?: () => void;

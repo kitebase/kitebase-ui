@@ -29,7 +29,7 @@
   import { resolveRecordTokens } from './record';
   import type { Flow } from '../api/types';
   import {
-    collectionNodes, draftAggregate, loadedAggregate, newAggregate, serialize, setValues,
+    collectionNodes, draftAggregate, loadedAggregate, newAggregate, renumber, serialize, setValues,
     type Aggregate, type DraftNode, type TreeNode,
   } from './aggregate';
   import type { FormDescriptor, LayoutNode } from './dataform.types';
@@ -179,6 +179,11 @@
     const agg = aggregate!;
     setValues(agg.root, draft);
     const page = formId!;
+    // A collection with a sequence is numbered as it stands: rows added,
+    // removed, sorted by a command or moved by hand all end up 1, 2, 3
+    for (const spec of collectionNodes((descriptor?.layout ?? []) as LayoutNode[])) {
+      if (typeof spec.sequence === 'string') renumber(agg.root, spec.id, spec.sequence);
+    }
 
     // Judged: the rules of the root's table may ask before anything is written
     const res = await callJudged('save_tree', serialize(agg), title);

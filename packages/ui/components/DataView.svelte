@@ -97,6 +97,7 @@
     focusRowId = undefined as unknown,
     initialRules = undefined as RuleRow[] | undefined,
     autofocus = false,
+    movableRows = false,
     onEvent = undefined as ((name: string, data: unknown) => void) | undefined,
   }: {
     view: ViewDescriptor;
@@ -108,8 +109,22 @@
     initialRules?: RuleRow[];
     /** Take the keyboard when the data arrives, on `focusRowId` if loaded. */
     autofocus?: boolean;
+    /**
+     * Rows the reader orders by hand (a collection with a sequence): moved by
+     * the handle or Alt+Up / Alt+Down, they are announced as `rows_moved` with
+     * the new order of the keys, or `row_move` with a key and a step, and the
+     * owner of the rows moves them.
+     */
+    movableRows?: boolean;
     onEvent?: (name: string, data: unknown) => void;
   } = $props();
+
+  /** A row moved from the keyboard: the owner moves it, the cursor stays on it. */
+  function handleRowMoveKey(id: unknown, delta: -1 | 1) {
+    onEvent?.('row_move', { id, delta });
+    // The rows come back in their new order: then the cursor goes where the row went
+    setTimeout(() => tableRef?.focusRowById(id), 0);
+  }
 
   // ── View state persistence (key + initial load) ────────────────────────────
   // A view opens from its descriptor. The one exception is the view the user
@@ -782,8 +797,14 @@
     });
   }
 
+  // Reorder mode, on rows ordered by hand: the handle shows, the columns stop
+  // sorting and filtering, so a row moved always lands where it is seen
+  let reorderMode = $state(false);
+
   function toggleFilter() {
     if (filterMode) tableRef?.clearHeaderFilter();
+    // Filtered rows cannot be reordered: the hidden ones would have no place
+    else reorderMode = false;
     filterMode = !filterMode;
     saveViewState();
   }
@@ -791,6 +812,21 @@
   function toggleSelect() {
     selectMode = !selectMode;
     saveViewState();
+  }
+
+  async function toggleReorder() {
+    if (reorderMode) { reorderMode = false; return; }
+    if (gridSorted) {
+      // A sort on screen may be the order wanted: keep it, or go back to the rows'
+      const keep = await msgbox.confirm(_('Keep the order on screen for the rows?'), undefined,
+                                        { confirm: _('Keep it'), cancel: _('Back to their order') });
+      if (keep) {
+        onEvent?.('rows_moved', (tableRef?.getActiveData() ?? []).map((r: any) => r[pkField]));
+      }
+    }
+    if (filterMode) toggleFilter();
+    gridSorted = false;
+    reorderMode = true;
   }
 
   // ── Changing the set ───────────────────────────────────────────────────────
@@ -1190,6 +1226,9 @@
       config={navigatorConfig}
       {filterMode}
       {selectMode}
+      movable={movableRows}
+      {reorderMode}
+      onToggleReorder={toggleReorder}
       {loading}
       {loadingMore}
       {hasMore}
@@ -1284,6 +1323,10 @@
         onDataLoaded={handleDataLoaded}
         onFiltered={handleFiltered}
         onSorted={handleSorted}
+        {movableRows}
+        reorder={reorderMode}
+        onRowsMoved={(ids) => onEvent?.('rows_moved', ids)}
+        onRowMoveKey={handleRowMoveKey}
         onReady={() => { tabulatorReady = true; syncCards(); }}
         onNavAdd={handleNavAdd}
         onNavEdit={handleNavEdit}
