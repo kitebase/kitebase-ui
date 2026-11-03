@@ -253,6 +253,7 @@
         hideFields={hideFields ?? []}
         groupLabel={title || undefined}
         submit={buffer ? 'confirm' : 'save'}
+        trapFocus
         defaults={draft && !aggregate ? { ...(defaults ?? {}), ...(draft.values ?? {}) } : defaults}
         onSave={handleSave}
         onCancel={handleCancel}

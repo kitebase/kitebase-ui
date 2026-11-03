@@ -89,6 +89,13 @@
     groupLabel?: string;
     /** `confirm` on an intermediate frame, `save` only at the root (§12). */
     submit?: 'save' | 'confirm';
+    /**
+     * The form is the page, as a dialog would be: Tab and Shift+Tab go round
+     * its fields, grids and buttons instead of leaving for the menu or the
+     * browser, and a click on an empty spot keeps the keys here. Off for a
+     * form beside a list, which must let the keyboard reach the list.
+     */
+    trapFocus?: boolean;
     recordId?: number | string | null;     // Step C: DB record id (null = new record)
     defaults?: Record<string, unknown>;    // caller's initial values, create mode only
     trigger?: Record<string, unknown>;
@@ -108,6 +115,7 @@
     hideFields = [],
     groupLabel = undefined,
     submit = 'save',
+    trapFocus = false,
     recordId,
     defaults,
     trigger,
@@ -946,6 +954,7 @@
   // ── Keyboard ───────────────────────────────────────────────────────────────
 
   function handleContainerKeydown(e: KeyboardEvent) {
+    if (e.key === 'Tab' && trapFocus) { keepTabInside(e); return; }
     if (!isEditable) return;
     if (e.key === 'Escape') {
       e.stopPropagation();
@@ -957,6 +966,51 @@
       e.preventDefault();
       primaryAction();
     }
+  }
+
+  // ── Focus kept in the page (trapFocus) ────────────────────────────────────
+
+  let containerEl = $state<HTMLElement | undefined>(undefined);
+
+  const TABBABLE_SEL =
+    'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), ' +
+    'select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+  /** From the last stop back to the first, and the other way with Shift. */
+  function keepTabInside(e: KeyboardEvent) {
+    if (!containerEl) return;
+    const stops = Array.from(containerEl.querySelectorAll<HTMLElement>(TABBABLE_SEL))
+      .filter((el) => el.offsetParent !== null || el === document.activeElement);
+    if (stops.length === 0) return;
+    const first = stops[0];
+    const last = stops[stops.length - 1];
+    const at = document.activeElement as HTMLElement | null;
+    const inside = !!at && containerEl.contains(at) && at !== containerEl;
+    if (e.shiftKey && (!inside || at === first)) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && (!inside || at === last)) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
+
+  // Focusable from code only (-1, never a Tab stop): what a click on an empty
+  // spot falls back to, so the keys still reach the form
+  $effect(() => {
+    if (!containerEl) return;
+    if (trapFocus) containerEl.tabIndex = -1;
+    else containerEl.removeAttribute('tabindex');
+  });
+
+  /** A click on an empty spot leaves the focus nowhere: it stays with the form. */
+  function keepFocusHere() {
+    if (!trapFocus || !containerEl) return;
+    queueMicrotask(() => {
+      if (containerEl && !containerEl.contains(document.activeElement)) {
+        containerEl.focus({ preventScroll: true });
+      }
+    });
   }
 
   // Enter in a plain text/number input → advance to next focusable in field area
@@ -1061,8 +1115,10 @@
 <!-- Container: F12 / Ctrl+Enter / Escape handled here -->
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <div
-  class="flex h-full flex-col overflow-hidden"
+  bind:this={containerEl}
+  class="kb-form-container flex h-full flex-col overflow-hidden"
   onkeydown={handleContainerKeydown}
+  onclick={keepFocusHere}
   role="region"
   aria-label={view.title ?? 'Form'}
 >
@@ -1645,6 +1701,9 @@
 {/snippet}
 
 <style>
+  /* Focused only to keep the keys when a click lands on an empty spot */
+  .kb-form-container:focus { outline: none; }
+
   .kb-phase-steps {
     display: flex;
     flex-wrap: wrap;
