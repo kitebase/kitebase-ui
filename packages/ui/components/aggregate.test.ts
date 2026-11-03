@@ -304,6 +304,18 @@ describe('the order of the rows', () => {
     expect(books(node)).toEqual(['new', 'a', 'b', 'gone']);
   });
 
+  it('marks a changed order as something to save, and the same order as nothing', () => {
+    const loadedLines = loadedAggregate('order_form', {
+      id: 1, values: {},
+      children: { lines: [{ id: 10, values: {}, children: {} }, { id: 11, values: {}, children: {} }] },
+    }).root;
+    moveRows(loadedLines, 'lines', [10, 11]);
+    expect(isDirty(loadedLines)).toBe(false);
+    moveRows(loadedLines, 'lines', [11, 10]);
+    expect(isDirty(loadedLines)).toBe(true);
+    expect(serialize({ page: 'order_form', root: loadedLines, seq: 0 }).root).not.toHaveProperty('reordered');
+  });
+
   it('moves one row a step, and nowhere past an end', () => {
     const node = lines();
     moveRow(node, 'lines', -2, -1);

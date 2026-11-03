@@ -29,7 +29,7 @@
   import { fkSpecs, missingKeys, withLabels, type LabelCache } from './fkLabels';
   import {
     liveRows, rowsOf, newRow, attachRow, replaceRow, removeRow, cloneNode,
-    moveRows, moveRow, renumber,
+    moveRows, moveRow,
     type Aggregate, type TreeNode,
   } from './aggregate';
   import { rowDefaults } from './record';
@@ -202,15 +202,14 @@
   }
 
   function handleEvent(name: string, data: unknown) {
+    // Moving reorders the buffer; the sequence is numbered when the tree is saved
     if (name === 'rows_moved' && node.sequence) {
       moveRows(parent, node.id, data as unknown[]);
-      renumber(parent, node.id, node.sequence);
       return;
     }
     if (name === 'row_move' && node.sequence) {
       const { id, delta } = data as { id: number; delta: -1 | 1 };
       moveRow(parent, node.id, id, delta);
-      renumber(parent, node.id, node.sequence);
       return;
     }
     if (name === 'row_command') {

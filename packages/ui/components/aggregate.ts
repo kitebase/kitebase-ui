@@ -27,6 +27,12 @@ export interface TreeNode {
    * sending back every loaded column would write values nobody touched.
    */
   touched?: string[];
+  /**
+   * The order of a collection below changed by hand — client-side only. The
+   * order lives in the arrays, and a sequence is numbered from them when the
+   * tree is saved; until then this is what says there is something to save.
+   */
+  reordered?: boolean;
 }
 
 export interface Aggregate {
@@ -124,7 +130,7 @@ export function liveRows(node: TreeNode, cid: string): TreeNode[] {
 
 /** True when anything in the subtree carries an operation. */
 export function isDirty(node: TreeNode): boolean {
-  if (node.op) return true;
+  if (node.op || node.reordered) return true;
   return Object.values(node.children).some((rows) => rows.some(isDirty));
 }
 
@@ -146,6 +152,7 @@ export function cloneNode(node: TreeNode): TreeNode {
   };
   if (node.op) copy.op = node.op;
   if (node.touched) copy.touched = [...node.touched];
+  if (node.reordered) copy.reordered = true;
   return copy;
 }
 
@@ -318,7 +325,9 @@ export function moveRows(parent: TreeNode, cid: string, ids: unknown[]): void {
   const going = current.filter((row) => row.op === 'delete');
   const at = new Map(ids.map((id, i) => [id, i]));
   const named = live.filter((row) => at.has(row.id)).sort((a, b) => at.get(a.id)! - at.get(b.id)!);
-  parent.children[cid] = [...named, ...live.filter((row) => !at.has(row.id)), ...going];
+  const next = [...named, ...live.filter((row) => !at.has(row.id))];
+  if (next.some((row, i) => row !== live[i])) parent.reordered = true;
+  parent.children[cid] = [...next, ...going];
 }
 
 /** One row a step up (-1) or down (1) among the live ones; at an end, nothing. */
@@ -334,7 +343,9 @@ export function moveRow(parent: TreeNode, cid: string, id: number, delta: -1 | 1
 /**
  * Number the live rows 1, 2, 3 in their order, in the column a collection
  * declares as its `sequence`: a row whose number changes is a change to save,
- * a new one (0) gets the number of its place.
+ * a new one (0) gets the number of its place. Done when the tree is saved,
+ * every time: in the buffer the order is the arrays', and numbering rows
+ * already in order changes nothing.
  */
 export function renumber(parent: TreeNode, cid: string, field: string): void {
   liveRows(parent, cid).forEach((row, i) => {

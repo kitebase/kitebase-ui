@@ -814,16 +814,10 @@
     saveViewState();
   }
 
-  async function toggleReorder() {
+  // Turned on, the grid shows the rows' own order again: a column sort is a way
+  // of looking, and only a row moved by hand changes the order
+  function toggleReorder() {
     if (reorderMode) { reorderMode = false; return; }
-    if (gridSorted) {
-      // A sort on screen may be the order wanted: keep it, or go back to the rows'
-      const keep = await msgbox.confirm(_('Keep the order on screen for the rows?'), undefined,
-                                        { confirm: _('Keep it'), cancel: _('Back to their order') });
-      if (keep) {
-        onEvent?.('rows_moved', (tableRef?.getActiveData() ?? []).map((r: any) => r[pkField]));
-      }
-    }
     if (filterMode) toggleFilter();
     gridSorted = false;
     reorderMode = true;
