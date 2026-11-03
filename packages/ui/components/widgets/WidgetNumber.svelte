@@ -42,21 +42,26 @@
     focused = true;
   }
 
+  // Only a value that changed is handed on: passing through an empty field
+  // must not turn "never set" into null and make the form look edited
+  function hand(n: number | null) {
+    if (n !== numeric) onchange(n);
+  }
+
   function handleInput(e: Event) {
     const input = e.currentTarget as HTMLInputElement;
     const clean = typeable(input.value, shape.scale === 0);
     if (clean !== input.value) input.value = clean;   // what cannot make a number is refused
     typed = clean;
     const n = parseNumber(clean);
-    if (n === null) onchange(null);
-    else if (!Number.isNaN(n)) onchange(n);
+    if (n === null || !Number.isNaN(n)) hand(n);
   }
 
   function handleBlur() {
     const n = parseNumber(typed);
     // Not a number after all ("1,2,3", a lone "-"): back to what it was
-    if (n === null) onchange(null);
-    else if (!Number.isNaN(n)) onchange(roundTo(n, shape.scale));
+    if (n === null) hand(null);
+    else if (!Number.isNaN(n)) hand(roundTo(n, shape.scale));
     focused = false;
     onblur?.();
   }
