@@ -261,6 +261,14 @@
     ).filter((f) => !hideFields.includes(f.name))
   );
 
+  // Fields of the form and not of the record (`transient`): never saved.
+  let transientFields = $derived(new Set(flatFields.filter((f) => f.transient).map((f) => f.name)));
+
+  /** The draft as a save sends it: without the fields only the form has. */
+  function savedValues(): Record<string, unknown> {
+    return Object.fromEntries(Object.entries(draft).filter(([k]) => !transientFields.has(k)));
+  }
+
   const isFieldHidden = (name: string) => hideFields.includes(name);
 
   // Group fields by same_row: a field with same_row:true joins the previous group.
@@ -818,7 +826,7 @@
         // declared in another descriptor, and dropping them would lose an edit
         // the user made through a button this form put on screen.
         const fieldNames = new Set([...flatFields.map(f => f.name), ...frameFields]);
-        const payload = Object.fromEntries(Object.entries(draft).filter(([k]) => fieldNames.has(k)));
+        const payload = Object.fromEntries(Object.entries(savedValues()).filter(([k]) => fieldNames.has(k)));
         const id = resolveRecordId();
         // Judged: the table's rules may ask before anything is written
         if (id === null || id === undefined) {
@@ -830,14 +838,14 @@
         // Step B: custom save endpoint
         res = await callJudged(src.save_endpoint, {
           ...resolvePass(src.pass ?? {}),
-          data: { ...draft },
+          data: savedValues(),
         }, groupLabel);
       } else {
         // Step A: the record is someone else's to write — a caller holding local
         // data, or the frame that owns the aggregate. If it refuses, the form
         // stays dirty and says why, rather than looking saved.
         try {
-          await onSave?.({ ...draft });
+          await onSave?.(savedValues());
         } catch (e) {
           // A question dismissed: nothing written, nothing to report, still dirty
           if (e instanceof FlowCancelled) return;

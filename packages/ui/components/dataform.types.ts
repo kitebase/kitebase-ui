@@ -24,6 +24,13 @@ export interface FormField {
   placeholder?: string;
   choices?: FormFieldChoice[]; // for combobox with local data (Step A) or enum
   widget_props?: Record<string, unknown>;
+  /**
+   * A field of the form, not of the record: no column holds it, so it is
+   * declared with its `type`. It lives in the draft (shown, validated, sent to
+   * the proposals, read by `$record.x` in a collection's prefill) and never
+   * goes out with a save.
+   */
+  transient?: boolean;
   // Layout
   same_row?: boolean;        // true → joins the previous field's row (inline)
   width?: number | string;   // px (number) or "30%" (string); absent → flex-1
