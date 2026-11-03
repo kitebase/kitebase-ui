@@ -404,8 +404,18 @@
 
   // ── Patch + validation ─────────────────────────────────────────────────────
 
+  // The fields the person has written in. Leaving a field untouched says
+  // nothing: a required one left empty is told when the form is saved, not
+  // when the focus merely passes through it (a dialog moving the focus, Tab).
+  const edited = new Set<string>();
+
   function patch(name: string, value: unknown) {
     draft[name] = value;
+    edited.add(name);
+  }
+
+  function leaveField(name: string) {
+    if (edited.has(name) || name in errors) validateField(name);
   }
 
   // What a widget holds that is not a value yet (JSON that does not parse):
@@ -1344,7 +1354,7 @@
       <WidgetText
         value={draft[field.name]}
         onchange={(v) => patch(field.name, v)}
-        onblur={() => validateField(field.name)}
+        onblur={() => leaveField(field.name)}
         readonly={fieldReadonly}
         type={widgetType}
         {field}
@@ -1353,7 +1363,7 @@
       <WidgetTextarea
         value={draft[field.name]}
         onchange={(v) => patch(field.name, v)}
-        onblur={() => validateField(field.name)}
+        onblur={() => leaveField(field.name)}
         readonly={fieldReadonly}
         {field}
       />
@@ -1361,7 +1371,7 @@
       <WidgetNumber
         value={draft[field.name]}
         onchange={(v) => patch(field.name, v)}
-        onblur={() => validateField(field.name)}
+        onblur={() => leaveField(field.name)}
         readonly={fieldReadonly}
         {field}
       />
@@ -1369,7 +1379,7 @@
       <WidgetDate
         value={draft[field.name]}
         onchange={(v) => patch(field.name, v)}
-        onblur={() => validateField(field.name)}
+        onblur={() => leaveField(field.name)}
         readonly={fieldReadonly}
         granularity={widgetType === 'datetime'
           ? ((field.granularity as 'hour' | 'minute' | 'second' | undefined) ?? 'minute')
@@ -1380,7 +1390,7 @@
       <WidgetText
         value={draft[field.name]}
         onchange={(v) => patch(field.name, v)}
-        onblur={() => validateField(field.name)}
+        onblur={() => leaveField(field.name)}
         readonly={fieldReadonly}
         type="time"
         {field}
@@ -1390,7 +1400,7 @@
         <WidgetBoolean
           value={draft[field.name]}
           onchange={(v) => patch(field.name, v)}
-          onblur={() => validateField(field.name)}
+          onblur={() => leaveField(field.name)}
           readonly={fieldReadonly}
           {field}
         />
@@ -1406,7 +1416,7 @@
       <WidgetCombobox
         value={draft[field.name]}
         onchange={(v) => patch(field.name, v)}
-        onblur={() => validateField(field.name)}
+        onblur={() => leaveField(field.name)}
         readonly={fieldReadonly}
         {field}
       />
@@ -1414,7 +1424,7 @@
       <WidgetFKCombobox
         value={draft[field.name]}
         onchange={(v) => patch(field.name, v)}
-        onblur={() => validateField(field.name)}
+        onblur={() => leaveField(field.name)}
         readonly={fieldReadonly}
         {field}
         filters={lookupFilters(field, draft)}
@@ -1423,7 +1433,7 @@
       <WidgetJson
         value={draft[field.name]}
         onchange={(v) => patch(field.name, v)}
-        onblur={() => validateField(field.name)}
+        onblur={() => leaveField(field.name)}
         oninvalid={(m) => widgetInvalid(field.name, m)}
         readonly={fieldReadonly}
         {field}
@@ -1458,7 +1468,7 @@
         componentId={widgetType}
         value={draft[field.name]}
         onchange={(v: unknown) => patch(field.name, v)}
-        onblur={() => validateField(field.name)}
+        onblur={() => leaveField(field.name)}
         readonly={fieldReadonly}
         record={draft}
         {field}
@@ -1467,7 +1477,7 @@
       <WidgetChecklist
         value={draft[field.name]}
         onchange={(v) => patch(field.name, v)}
-        onblur={() => validateField(field.name)}
+        onblur={() => leaveField(field.name)}
         readonly={fieldReadonly}
         {field}
       />
@@ -1475,7 +1485,7 @@
       <WidgetText
         value={draft[field.name]}
         onchange={(v) => patch(field.name, v)}
-        onblur={() => validateField(field.name)}
+        onblur={() => leaveField(field.name)}
         readonly={fieldReadonly}
         {field}
       />
