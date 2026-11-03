@@ -173,6 +173,11 @@
     KitebaseTable.create(el, opts).then(table => {
       if (!active) { table.destroy(); return; }
       kbTable = table;
+      // Rows that changed while the table was being built (labels resolved
+      // meanwhile) reached no table: the effect above found none. Hand over
+      // the rows as they are now.
+      const now = untrack(() => data);
+      if (now !== opts.data) table.setData(now);
       // Re-apply columns: inferred alignments/formatters may have arrived
       // from DataView between create() start and resolve.
       kbTable.updateColumns(opts.columns, opts.selectable, opts.filterMode);

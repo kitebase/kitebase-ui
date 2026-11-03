@@ -90,12 +90,16 @@ export class KitebaseTable {
   }
 
   private static _buildCols(columns: ColumnDef[], selectable: boolean, filterMode: boolean,
-                            reorder = false): any[] {
+                            movable = false, reorder = false): any[] {
     const cols: any[] = [];
 
-    if (reorder) {
+    // Always there on movable rows, shown in reorder mode only: Tabulator reads
+    // at build time whether rows move by a handle, and without one the whole
+    // row would drag, reorder mode or not
+    if (movable) {
       cols.push({
         field: '_handle',
+        visible: reorder,
         rowHandle: true,
         formatter: 'handle',
         headerSort: false,
@@ -162,7 +166,8 @@ export class KitebaseTable {
   private static _buildOptions(config: KitebaseTableConfig): any {
     const opts: any = {
       data: KitebaseTable.injectMeta(config.data),
-      columns: KitebaseTable._buildCols(config.columns, config.selectable, config.filterMode),
+      columns: KitebaseTable._buildCols(config.columns, config.selectable, config.filterMode,
+                                        config.movableRows),
       // "100%" → Tabulator owns the full root element height and computes
       // tableHolder = total - header - footer internally.
       // A numeric px value would control only tableHolder, causing overflow
@@ -291,6 +296,7 @@ export class KitebaseTable {
     });
 
     t.on('rowMoved', () => {
+      if (!this._reorder) return;
       cfg.onRowsMoved?.(t.getRows().map((r: any) => r.getData()?.id));
     });
 
@@ -518,7 +524,8 @@ export class KitebaseTable {
     this.config.columns = columns;
     this.config.selectable = selectable;
     this.config.filterMode = filterMode;
-    this.table?.setColumns(KitebaseTable._buildCols(columns, selectable, filterMode, this._reorder));
+    this.table?.setColumns(KitebaseTable._buildCols(columns, selectable, filterMode,
+                                                    this.config.movableRows, this._reorder));
   }
 
   /** Reorder mode, where the rows are movable: the handle, no column sort. */
@@ -527,7 +534,7 @@ export class KitebaseTable {
     this._reorder = on;
     if (on) this.table?.clearSort();
     this.table?.setColumns(KitebaseTable._buildCols(
-      this.config.columns, this.config.selectable, this.config.filterMode, on));
+      this.config.columns, this.config.selectable, this.config.filterMode, true, on));
   }
 
   /** Replace all data (injects _meta into new rows). */
