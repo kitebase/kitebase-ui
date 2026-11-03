@@ -38,6 +38,7 @@
     onFiltered = undefined as ((count: number) => void) | undefined,
     onSorted = undefined as (() => void) | undefined,
     movableRows = false,
+    keepSelection = false,
     reorder = false,
     onRowsMoved = undefined as ((ids: unknown[]) => void) | undefined,
     onRowMoveKey = undefined as ((id: unknown, delta: -1 | 1) => void) | undefined,
@@ -71,6 +72,7 @@
     onFiltered?: (count: number) => void;
     onSorted?: () => void;
     movableRows?: boolean;
+    keepSelection?: boolean;
     /** Reorder mode, on a table built with `movableRows`. */
     reorder?: boolean;
     onRowsMoved?: (ids: unknown[]) => void;
@@ -164,7 +166,7 @@
       initialSort, treeMode, treeChildField, treeStartExpanded, rowTones,
       onRowClick, onRowDblClick, onCellClick, onSelectionChange,
       onDataLoaded, onFiltered, onSorted, onReady,
-      movableRows, onRowsMoved, onRowMoveKey,
+      movableRows, keepSelection, onRowsMoved, onRowMoveKey,
       onNavAdd, onNavEdit, onNavDelete, onNavCommands,
       onNavRefresh, onNavExport, onNavPrint, onNavCancel,
     }));

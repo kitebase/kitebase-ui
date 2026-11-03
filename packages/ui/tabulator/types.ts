@@ -62,6 +62,12 @@ export interface KitebaseTableConfig {
    * asked from the keyboard, and the owner of the rows decides.
    */
   movableRows?: boolean;
+  /**
+   * Rows replaced keep their ticks: the rows of a buffer come back changed
+   * by a command, and are the same rows. A list read again is a new set,
+   * and starts with none.
+   */
+  keepSelection?: boolean;
   onRowsMoved?: (ids: unknown[]) => void;
   onRowMoveKey?: (id: unknown, delta: -1 | 1) => void;
   // Navigator action callbacks — fired by keyboard shortcuts

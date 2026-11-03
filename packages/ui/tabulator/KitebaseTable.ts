@@ -539,7 +539,11 @@ export class KitebaseTable {
 
   /** Replace all data (injects _meta into new rows). */
   setData(data: any[]) {
-    this.table?.replaceData(KitebaseTable.injectMeta(data));
+    if (!this.table) return;
+    const ticked = this.config.keepSelection
+      ? this.table.getSelectedData().map((r: any) => r.id) : [];
+    const done = this.table.replaceData(KitebaseTable.injectMeta(data));
+    if (ticked.length) Promise.resolve(done).then(() => this.selectRowsByIds(ticked));
   }
 
   /** Append rows and return the new total count; fires onDataLoaded. */

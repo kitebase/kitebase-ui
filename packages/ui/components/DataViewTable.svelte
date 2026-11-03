@@ -29,6 +29,7 @@
     onFiltered = undefined as ((count: number) => void) | undefined,
     onSorted = undefined as (() => void) | undefined,
     movableRows = false,
+    keepSelection = false,
     reorder = false,
     onRowsMoved = undefined as ((ids: unknown[]) => void) | undefined,
     onRowMoveKey = undefined as ((id: unknown, delta: -1 | 1) => void) | undefined,
@@ -57,6 +58,7 @@
     onFiltered?: (count: number) => void;
     onSorted?: () => void;
     movableRows?: boolean;
+    keepSelection?: boolean;
     reorder?: boolean;
     onRowsMoved?: (ids: unknown[]) => void;
     onRowMoveKey?: (id: unknown, delta: -1 | 1) => void;
@@ -114,6 +116,7 @@
   {onFiltered}
   {onSorted}
   {movableRows}
+  {keepSelection}
   {reorder}
   {onRowsMoved}
   {onRowMoveKey}

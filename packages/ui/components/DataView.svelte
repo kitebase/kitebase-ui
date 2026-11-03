@@ -1318,6 +1318,7 @@
         onFiltered={handleFiltered}
         onSorted={handleSorted}
         {movableRows}
+        keepSelection={navigatorMode === 'buffered'}
         reorder={reorderMode}
         onRowsMoved={(ids) => onEvent?.('rows_moved', ids)}
         onRowMoveKey={handleRowMoveKey}
