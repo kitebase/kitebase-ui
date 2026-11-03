@@ -61,7 +61,8 @@
     defaults?: Record<string, unknown>;   // caller's initial values (create mode)
     /**
      * A new document the server prepared (a sheet, a duplicate): header and
-     * rows, nothing written. The form opens on it as on any new aggregate.
+     * rows, nothing written. The form opens on it as on any new record; a form
+     * without collections takes its values as defaults.
      */
     draft?: DraftNode;
     /**
@@ -252,7 +253,7 @@
         hideFields={hideFields ?? []}
         groupLabel={title || undefined}
         submit={buffer ? 'confirm' : 'save'}
-        {defaults}
+        defaults={draft && !aggregate ? { ...(defaults ?? {}), ...(draft.values ?? {}) } : defaults}
         onSave={handleSave}
         onCancel={handleCancel}
       />
