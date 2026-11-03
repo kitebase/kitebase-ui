@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  newAggregate, loadedAggregate, addRow, removeRow, setValues, serialize,
+  newAggregate, loadedAggregate, draftAggregate, addRow, removeRow, setValues, serialize,
   liveRows, rowsOf, isDirty, cloneNode, collectionNodes, snapshot, applyRows,
   type TreeNode,
 } from './aggregate';
@@ -151,6 +151,27 @@ describe('temporary ids', () => {
     const agg = newAggregate('book_form', { title: 'Dune' });
     expect(agg.root).toMatchObject({ op: 'create', id: -1, values: { title: 'Dune' } });
     expect(addRow(agg, agg.root, 'authors', {}).id).toBe(-2);
+  });
+
+  it('opens a draft the server prepared as a new tree, at every depth', () => {
+    const agg = draftAggregate('order_form', {
+      values: { publisher_id: 1 },
+      children: { lines: [{ values: { book_id: 4 }, children: { notes: [{ values: { text: 'x' } }] } },
+                          { values: { book_id: 5 } }] },
+    });
+
+    expect(isDirty(agg.root)).toBe(true);
+    expect(serialize(agg)).toEqual({
+      page: 'order_form',
+      root: {
+        op: 'create', id: -1, values: { publisher_id: 1 },
+        children: { lines: [
+          { op: 'create', id: -2, values: { book_id: 4 },
+            children: { notes: [{ op: 'create', id: -3, values: { text: 'x' }, children: {} }] } },
+          { op: 'create', id: -4, values: { book_id: 5 }, children: {} },
+        ] },
+      },
+    });
   });
 
   it('writes a whole new tree in one call', () => {

@@ -51,6 +51,32 @@ export function newAggregate(page: string, values: Record<string, unknown> = {})
   return agg;
 }
 
+/**
+ * A new tree with rows already in it — a document the server prepared (a
+ * sheet, a duplicate) for the person to finish. Every node is a create with a
+ * temporary id, so the form opens with something to save and nothing written.
+ */
+export function draftAggregate(page: string, tree: DraftNode): Aggregate {
+  const agg = newAggregate(page, tree.values ?? {});
+  const fill = (node: TreeNode, children: DraftNode['children']) => {
+    for (const [cid, rows] of Object.entries(children ?? {})) {
+      for (const row of rows) {
+        const child = newRow(agg, row.values ?? {});
+        attachRow(node, cid, child);
+        fill(child, row.children);
+      }
+    }
+  };
+  fill(agg.root, tree.children);
+  return agg;
+}
+
+/** A tree as the server proposes it: values and rows, no ids. */
+export interface DraftNode {
+  values?: Record<string, unknown>;
+  children?: Record<string, DraftNode[]>;
+}
+
 /** Wrap what `load_tree` returned: every id is real, nothing is touched yet. */
 export function loadedAggregate(page: string, root: TreeNode): Aggregate {
   return { page, root: normalize(root), seq: 0 };

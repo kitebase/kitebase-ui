@@ -26,6 +26,9 @@
  *       the browser's file picker, then the call to the upload route with the
  *       file; its questions are asked and the same file sent again with the
  *       answers, and the answer is applied with these same rules
+ *   {action: 'open_form', page, draft, title?}                   → a new document
+ *       the server prepared (a sheet, a duplicate), open in its form to be
+ *       finished; saved, the view refreshes it
  *   {action: 'set_query_params', params}                         → keys the view
  *       carries on every query from now on
  *
@@ -41,6 +44,7 @@ import { msgbox } from './msgbox.svelte';
 import { _ } from '../i18n';
 import PanelPage from './PanelPage.svelte';
 import FormStepPage from './FormStepPage.svelte';
+import DataFormView from './DataFormView.svelte';
 import { formDialog } from './formDialog.svelte';
 import { callJudged, presentOutcome } from './flow';
 import type { FormDescriptor } from './dataform.types';
@@ -87,6 +91,20 @@ async function applyBody(body: Payload, ctx: ResultContext, fallback?: string): 
     case 'stack_push':
       if (typeof body.panel === 'string') {
         ctx.stack.push(PanelPage, { panelId: body.panel, ...(body.props as object ?? {}) });
+      }
+      return;
+
+    case 'open_form':
+      if (typeof body.page === 'string') {
+        ctx.stack.push(DataFormView, {
+          formId: body.page,
+          draft: body.draft,
+          title: (body.title as string | undefined) ?? ctx.title,
+          onSaved: (saved: Payload) => {
+            if (saved.id != null && ctx.refreshRows) ctx.refreshRows([saved.id]);
+            else ctx.reload?.();
+          },
+        });
       }
       return;
 

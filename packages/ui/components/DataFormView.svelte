@@ -14,6 +14,7 @@
    *   formId      string              e.g. 'book_form' — also the page id of the aggregate
    *   descriptor  FormDescriptor      a descriptor the caller built, instead of an id
    *   recordId    string|number|null  null = new record
+   *   draft       DraftNode           a new aggregate with values and rows already in it
    *   title       string              shown in header bar
    *   onSaved     (savedData) => void  called after successful save with merged record (before pop)
    */
@@ -28,8 +29,8 @@
   import { resolveRecordTokens } from './record';
   import type { Flow } from '../api/types';
   import {
-    collectionNodes, loadedAggregate, newAggregate, serialize, setValues,
-    type Aggregate, type TreeNode,
+    collectionNodes, draftAggregate, loadedAggregate, newAggregate, serialize, setValues,
+    type Aggregate, type DraftNode, type TreeNode,
   } from './aggregate';
   import type { FormDescriptor, LayoutNode } from './dataform.types';
 
@@ -41,6 +42,7 @@
     recordId = null,
     data = undefined,
     defaults = undefined,
+    draft = undefined,
     buffer = undefined,
     hideFields = undefined,
     title = '',
@@ -57,6 +59,11 @@
     recordId?: string | number | null;
     data?: Record<string, unknown>;       // Step A: computed row, no DB
     defaults?: Record<string, unknown>;   // caller's initial values (create mode)
+    /**
+     * A new document the server prepared (a sheet, a duplicate): header and
+     * rows, nothing written. The form opens on it as on any new aggregate.
+     */
+    draft?: DraftNode;
     /**
      * A node of someone else's buffer — this frame edits a row of a collection
      * rather than owning an aggregate. It reads and writes nothing: confirming
@@ -135,7 +142,7 @@
     if (recordId === null || recordId === undefined) {
       // A new aggregate: DataForm still computes the create defaults, and they
       // reach the buffer as the draft it hands back.
-      aggregate = newAggregate(formId);
+      aggregate = draft ? draftAggregate(formId, draft) : newAggregate(formId);
       return;
     }
 
