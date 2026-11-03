@@ -224,6 +224,8 @@
   // nothing used to mean a page with no buttons and no editable field, which is
   // indistinguishable from a broken one.
   let isEditable = $derived(policy.editable !== false);
+  // A field's help under it, always, instead of behind its "?" (help_display).
+  const helpInline = $derived(view.help_display === 'inline');
 
   // Columns the model declares `editable: false`. The model says what can be
   // edited at all; a descriptor can only restrict that, never widen it.
@@ -1492,7 +1494,14 @@
     {/if}
   </div>
 
-  <!-- Under the field only the error: the help is on request (FieldHelp) -->
+  <!-- Under the field the error, and the help only when the form shows it
+       inline: otherwise it is on request (FieldHelp) -->
+  <!-- As wide as a line of reading, not as the field: a number is only as wide
+       as its digits, and its help would wrap every few words. -->
+  {#if helpInline && field.help}
+    <p class="mt-1 w-max max-w-[min(65ch,80vw)] whitespace-pre-line text-xs
+              text-[var(--kb-text-subtle)]">{field.help}</p>
+  {/if}
   {#if error}
     <p class="mt-1 text-xs text-danger">{error}</p>
   {/if}
@@ -1500,7 +1509,7 @@
 {/snippet}
 
 {#snippet help(field: FormField)}
-  {#if field.help}
+  {#if field.help && !helpInline}
     <FieldHelp
       text={field.help as string}
       label={field.label ?? field.name}

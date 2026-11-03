@@ -252,6 +252,13 @@ export interface FormDescriptor {
    * id. Without phases the form is drawn whole, as always.
    */
   phases?: FormPhase[];
+  /**
+   * Where a field's `help` is shown: on request, behind the "?" beside the
+   * label (the default), or under the field, always. Inline is for a form whose
+   * help is the point of it, a page of settings, where each value needs its
+   * explanation in view.
+   */
+  help_display?: 'popover' | 'inline';
   [key: string]: unknown;
 }
 
