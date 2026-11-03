@@ -14,6 +14,8 @@
 import { api } from '../api/client';
 import type { APIResponse, Flow, FlowQuestion } from '../api/types';
 import { msgbox } from './msgbox.svelte';
+import { formDialog } from './formDialog.svelte';
+import type { FormDescriptor } from './dataform.types';
 import { applyResult, type ResultContext } from './resultAction';
 import { _ } from '../i18n';
 
@@ -43,13 +45,18 @@ export async function callJudged<T = unknown>(
 }
 
 async function ask(question: FlowQuestion, title?: string): Promise<unknown> {
+  if (question.kind === 'form') {
+    const typed = await formDialog.open(question.view as unknown as FormDescriptor,
+                                        question.values ?? {}, question.text ?? title);
+    return typed ?? undefined;
+  }
   if (question.kind === 'choose') {
     return msgbox.choose(
       (question.options ?? []).map((o) => ({ label: o.label, value: o.value })),
       title, question.text,
     );
   }
-  const yes = await msgbox.confirm(question.text, title,
+  const yes = await msgbox.confirm(question.text ?? '', title,
                                    { confirm: question.yes, cancel: question.no });
   return yes ? true : undefined;
 }

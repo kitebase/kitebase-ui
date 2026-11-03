@@ -742,28 +742,39 @@
     if (!valid) { focusFirstError(); return; }
 
     const endpoint = current.next?.endpoint;
-    if (endpoint) {
-      stepping = true;
-      internalStatus = undefined;
-      try {
-        const tree = buffer
-          ? snapshot(buffer.node, draft)
-          : { id: resolveRecordId() ?? -1, values: { ...draft }, children: {} };
-        const res = await callJudged<ProposalPatch>(endpoint, { tree }, groupLabel);
-        // A question answered no: the phase stays, as the person chose
-        if (res.cancelled) return;
-        if (res.status !== 'success') {
-          if (res.flow?.patch) draft = { ...draft, ...res.flow.patch };
-          internalStatus = { message: res.message ?? _('Error'), type: 'error' };
-          return;
-        }
-        applyProposal(res.data);
-        if (res.flow?.info?.length) await msgbox.alert(res.flow.info.join('\n'), groupLabel);
-      } finally {
-        stepping = false;
-      }
-    }
+    // A question answered no, or a refusal: the phase stays
+    if (endpoint && !(await runProposal(endpoint))) return;
     await enterPhase(phaseIdx + 1);
+  }
+
+  /**
+   * Ask the server what to change in the document as it stands: the step out of
+   * a phase, a command on the rows (with `scope`, where it was given). The
+   * answer is a patch of the draft, header and rows; nothing is written. False
+   * when nothing was applied: a question answered no, or a refusal.
+   */
+  async function runProposal(endpoint: string, scope?: Record<string, unknown>,
+                             title: string | undefined = groupLabel): Promise<boolean> {
+    if (stepping) return false;
+    stepping = true;
+    internalStatus = undefined;
+    try {
+      const tree = buffer
+        ? snapshot(buffer.node, draft)
+        : { id: resolveRecordId() ?? -1, values: { ...draft }, children: {} };
+      const res = await callJudged<ProposalPatch>(endpoint, scope ? { tree, scope } : { tree }, title);
+      if (res.cancelled) return false;
+      if (res.status !== 'success') {
+        if (res.flow?.patch) draft = { ...draft, ...res.flow.patch };
+        internalStatus = { message: res.message ?? _('Error'), type: 'error' };
+        return false;
+      }
+      applyProposal(res.data);
+      if (res.flow?.info?.length) await msgbox.alert(res.flow.info.join('\n'), title);
+      return true;
+    } finally {
+      stepping = false;
+    }
   }
 
   interface ProposalPatch {
@@ -1407,6 +1418,7 @@
           record={draft}
           readonly={!isEditable}
           fallbackLabel={groupLabel}
+          onCommand={async (endpoint, scope, title) => { await runProposal(endpoint, scope, title); }}
         />
       {/if}
     {:else if node.type === 'button'}

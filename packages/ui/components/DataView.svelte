@@ -1011,6 +1011,18 @@
     }
     const activeId = _activeRowData ? (_activeRowData as any)[pkField] : undefined;
     const selectedIds = tableRef?.getSelectedData().map((r: any) => r[pkField]) ?? [];
+    // Rows in a buffer: the command works on the document, not on the
+    // database, and the frame that holds the document runs it.
+    if (navigatorMode === 'buffered') {
+      // The rows the column filters leave, only when they leave out some:
+      // a command given on a filtered grid means the rows on screen.
+      const shown = tableRef?.getActiveData() ?? [];
+      const filtered = shown.length < rows.length;
+      onEvent?.('row_command', { command: cmd, label: commandLabel(cmd), current: activeId,
+                                 checked: selectedIds,
+                                 visible: filtered ? shown.map((r: any) => r[pkField]) : undefined });
+      return;
+    }
     const payload: Record<string, unknown> = {
       ...((cmd.params as Record<string, unknown> | undefined) ?? {}),
       table: view.source?.model,

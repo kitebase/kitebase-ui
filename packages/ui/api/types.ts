@@ -36,13 +36,16 @@ export interface LoginCredentials {
  */
 export interface FlowQuestion {
   key: string;
-  kind: 'confirm' | 'choose';
-  text: string;
+  kind: 'confirm' | 'choose' | 'form';
+  text?: string;
   /** The labels of a confirm: they say what each answer does. */
   yes?: string;
   no?: string;
   /** The options of a choose. */
   options?: Array<{ value: unknown; label: string }>;
+  /** The view of a form, and its first values: the answer is what was typed. */
+  view?: Record<string, unknown>;
+  values?: Record<string, unknown>;
 }
 
 export interface Flow {

@@ -13,8 +13,9 @@ export const MODE_DEFAULTS: Record<string, ReadonlySet<string>> = {
   lookup:   new Set(['add', 'edit', 'delete', 'accept', 'cancel', 'filter', 'search']),
   batch:    new Set(['edit', 'accept', 'cancel', 'select', 'filter']),
   // The rows are a buffer, not a set the user chose: nothing to search or
-  // re-query, and the count is what the grid already shows.
-  buffered: new Set(['add', 'edit', 'delete']),
+  // re-query, and the count is what the grid already shows. Ticks and column
+  // filters stay, local to the grid: they say which rows a command works on.
+  buffered: new Set(['add', 'edit', 'delete', 'select', 'filter']),
   readonly: new Set(['filter', 'search', 'export']),
 };
 

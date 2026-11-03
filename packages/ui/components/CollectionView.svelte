@@ -15,6 +15,8 @@
    *   agg     Aggregate        the tree — its counter hands out temporary ids
    *   parent  TreeNode         the node this collection hangs from
    *   record  object           the parent's live draft, read by `prefill`
+   *   onCommand (endpoint, scope, title) => …  runs a command of the rows as a
+   *           proposal on the whole document: the frame that owns the draft does
    */
   import { getContext, untrack } from 'svelte';
   import { _ } from '../i18n';
@@ -33,7 +35,8 @@
   import type { CollectionNode } from './dataform.types';
   import type { ViewDescriptor } from './dataview.types';
 
-  let { node, agg, parent, record = {}, readonly = false, fallbackLabel = undefined }: {
+  let { node, agg, parent, record = {}, readonly = false, fallbackLabel = undefined,
+        onCommand = undefined }: {
     node: CollectionNode;
     agg: Aggregate;
     parent: TreeNode;
@@ -41,6 +44,7 @@
     readonly?: boolean;
     /** The name of what encloses the grid — a tab — when the node carries none. */
     fallbackLabel?: string;
+    onCommand?: (endpoint: string, scope: Record<string, unknown>, title?: string) => Promise<void>;
   } = $props();
 
   const stack: StackInstance = getContext<StackInstance>('kb:stack') ?? globalStack;
@@ -186,6 +190,16 @@
   }
 
   function handleEvent(name: string, data: unknown) {
+    if (name === 'row_command') {
+      const { command, label, current, checked, visible } = data as {
+        command: { endpoint?: string }; label?: string; current?: unknown; checked: unknown[];
+        visible?: unknown[];
+      };
+      if (command.endpoint) {
+        onCommand?.(command.endpoint, { collection: node.id, current, checked, visible }, label);
+      }
+      return;
+    }
     if (name === 'row_add') {
       openRow(newRow(agg), true);
       return;
