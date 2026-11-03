@@ -56,6 +56,8 @@ export interface Flow {
   info?: string[];
   /** On a refusal, the values the form takes all the same. */
   patch?: Record<string, unknown>;
+  /** On a refusal, in a form with phases: the phase where the problem is. */
+  phase?: string;
   /** Once saved: what the client does next, in the `resultAction` vocabulary. */
   actions?: Array<Record<string, unknown>>;
 }

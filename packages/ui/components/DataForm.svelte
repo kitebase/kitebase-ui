@@ -799,6 +799,9 @@
       if (res.cancelled) return false;
       if (res.status !== 'success') {
         if (res.flow?.patch) draft = { ...draft, ...res.flow.patch };
+        // Back where the problem is, when the judge says where
+        const at = phases.findIndex((p) => p.id === res.flow?.phase);
+        if (at >= 0 && at !== phaseIdx) await enterPhase(at);
         internalStatus = { message: res.message ?? _('Error'), type: 'error' };
         return false;
       }
@@ -826,7 +829,23 @@
   /** Save on the last phase, step forward on the others: one key for both. */
   function primaryAction() {
     if (phases.length > 0 && !onLastPhase) nextPhase();
-    else handleSave();
+    else saveDocument();
+  }
+
+  /**
+   * The save, judged first when the last phase has a judge: its fields, then
+   * the server on the whole document, then the save. A refusal stays, or goes
+   * back to the phase it names.
+   */
+  async function saveDocument() {
+    const endpoint = phases.length > 0 && onLastPhase ? phase?.next?.endpoint : undefined;
+    if (endpoint) {
+      let valid = true;
+      for (const f of phaseFields(phase!)) if (!validateField(f.name)) valid = false;
+      if (!valid) { focusFirstError(); return; }
+      if (!(await runProposal(endpoint))) return;
+    }
+    await handleSave();
   }
 
   // ── Save / Cancel ──────────────────────────────────────────────────────────
@@ -1235,8 +1254,8 @@
       {:else if action.id === 'save'}
         <button
           class="btn btn-primary py-1.5 text-xs"
-          disabled={saving}
-          onclick={handleSave}
+          disabled={saving || stepping}
+          onclick={saveDocument}
           title={submit === 'confirm' ? _('Confirm (F12 or Ctrl+Enter)') : _('Save (F12 or Ctrl+Enter)')}
         >
           {#if buttonStyle === 'icon' || buttonStyle === 'icon-label'}
@@ -1681,13 +1700,16 @@
   {@const shown = (p.summary ?? [])
     .map((name) => flatFields.find((f) => f.name === name))
     .filter((f): f is FormField => !!f)}
-  <!-- What a phase left behind filled in, read only; a click goes back to it. -->
-  <button type="button" class="kb-phase-summary" onclick={() => enterPhase(index)}
-          title={_t('Back to {step}', { step: p.label ?? p.id })}>
-    {#each shown as f (f.name)}
-      <div class="kb-phase-summary-field">{@render fieldContent({ ...f, readonly: true })}</div>
-    {/each}
-  </button>
+  <!-- What a phase left behind filled in, read only; a click goes back to it.
+       A phase that names nothing to show (the rows) leaves no empty band. -->
+  {#if shown.length > 0}
+    <button type="button" class="kb-phase-summary" onclick={() => enterPhase(index)}
+            title={_t('Back to {step}', { step: p.label ?? p.id })}>
+      {#each shown as f (f.name)}
+        <div class="kb-phase-summary-field">{@render fieldContent({ ...f, readonly: true })}</div>
+      {/each}
+    </button>
+  {/if}
 {/snippet}
 
 {#snippet rowNode(node: RowNode)}
