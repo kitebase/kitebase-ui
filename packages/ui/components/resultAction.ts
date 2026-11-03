@@ -185,7 +185,7 @@ async function applyBody(body: Payload, ctx: ResultContext, fallback?: string): 
  * The browser's file picker, for one file. Null when it closes without one:
  * `cancel` is how the input says so, where the browser supports it.
  */
-function pickFile(accept?: string): Promise<File | null> {
+export function pickFile(accept?: string): Promise<File | null> {
   return new Promise((resolve) => {
     // In the document while it waits: some browsers do not tell an input that
     // is not about the file chosen

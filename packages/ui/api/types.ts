@@ -36,7 +36,7 @@ export interface LoginCredentials {
  */
 export interface FlowQuestion {
   key: string;
-  kind: 'confirm' | 'choose' | 'form';
+  kind: 'confirm' | 'choose' | 'form' | 'file';
   text?: string;
   /** The labels of a confirm: they say what each answer does. */
   yes?: string;
@@ -46,6 +46,8 @@ export interface FlowQuestion {
   /** The view of a form, and its first values: the answer is what was typed. */
   view?: Record<string, unknown>;
   values?: Record<string, unknown>;
+  /** The extensions the picker of a file offers. */
+  accept?: string[];
 }
 
 export interface Flow {

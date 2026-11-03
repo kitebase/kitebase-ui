@@ -16,7 +16,7 @@ import type { APIResponse, Flow, FlowQuestion } from '../api/types';
 import { msgbox } from './msgbox.svelte';
 import { formDialog } from './formDialog.svelte';
 import type { FormDescriptor } from './dataform.types';
-import { applyResult, type ResultContext } from './resultAction';
+import { applyResult, pickFile, type ResultContext } from './resultAction';
 import { _ } from '../i18n';
 
 // A rule that asks a new question at every answer would never end.
@@ -36,6 +36,16 @@ export async function callJudged<T = unknown>(
     // Asked again what it was told: the rule ignores its answer, and looping
     // would not change that.
     if (!question || question.key in answers) return res;
+
+    // A file: from here on the same call goes through the upload route, the
+    // file beside the parameters, as many times as the questions take
+    if (question.kind === 'file') {
+      const file = await pickFile(question.accept?.join(','));
+      if (!file) return { status: 'error', cancelled: true };
+      call = (o, p) => api.sendFile(o, p, file);
+      answers[question.key] = file.name;
+      continue;
+    }
 
     const answer = await ask(question, title);
     if (answer === undefined) return { status: 'error', cancelled: true };
