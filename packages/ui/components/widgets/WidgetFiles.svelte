@@ -18,7 +18,7 @@
   import { _, _t } from '../../i18n';
   import { acceptAttr, sizeText } from './media';
   import { viewerOf, type Viewer } from './viewers';
-  import { File as FileIcon, FileArchive, FileImage, FileSpreadsheet, FileText, X } from 'lucide-svelte';
+  import { File as FileIcon, FileArchive, FileImage, FileSpreadsheet, FileText, X } from '@lucide/svelte';
 
   interface Props {
     readonly?: boolean;

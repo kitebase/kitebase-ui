@@ -21,7 +21,7 @@
   import { rowTones, toneOf, type ColumnTone } from './tone';
   import { mediaUrl } from '../api/media';
   import { _ } from '../i18n';
-  import { ImageOff } from 'lucide-svelte';
+  import { ImageOff } from '@lucide/svelte';
 
   interface Props {
     rows: unknown[];

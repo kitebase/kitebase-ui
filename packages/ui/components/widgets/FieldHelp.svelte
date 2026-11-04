@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Popover } from 'bits-ui';
-  import { CircleHelp } from 'lucide-svelte';
+  import { CircleHelp } from '@lucide/svelte';
   import { _ } from '../../i18n';
 
   // A field's `help`, on request: a "?" beside the label that opens it, and F1

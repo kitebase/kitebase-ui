@@ -13,7 +13,7 @@
    * value column; a range over a foreign key is two lookups, which is the case
    * that needs the room.
    */
-  import { X } from 'lucide-svelte';
+  import { X } from '@lucide/svelte';
   import { _ } from '../i18n';
   import WidgetFKCombobox from './widgets/WidgetFKCombobox.svelte';
   import type { FormField } from './dataform.types';

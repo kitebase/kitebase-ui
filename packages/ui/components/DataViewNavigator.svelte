@@ -20,7 +20,7 @@
     RefreshCw, Ellipsis,
     ChevronDown, SquareCheckBig, Zap, ArrowUpDown,
     Table2, LayoutGrid, ListTree,
-  } from 'lucide-svelte';
+  } from '@lucide/svelte';
   import type { NavigatorConfig, CommandItem } from './dataview.types';
   import { commandLabel } from './dataview.types';
   import { visibleButtons } from './navigator.visibility';

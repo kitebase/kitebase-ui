@@ -18,7 +18,7 @@
    */
   import { onMount, tick, untrack } from 'svelte';
   import type { Snippet } from 'svelte';
-  import { Check, X, Loader } from 'lucide-svelte';
+  import { Check, X, Loader } from '@lucide/svelte';
   import { getConfig } from '../config';
   import { api } from '../api/client';
   import WidgetText from './widgets/WidgetText.svelte';

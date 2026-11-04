@@ -1,10 +1,10 @@
 /**
  * Resolves a kebab-case lucide icon name (as used in `menu_items.*.icon` /
  * `chrome` descriptors, e.g. "file-text", "flask-conical") to its Svelte
- * component from lucide-svelte, which exports icons as named PascalCase
+ * component from @lucide/svelte, which exports icons as named PascalCase
  * exports (FileText, FlaskConical, ...).
  */
-import * as Icons from 'lucide-svelte';
+import * as Icons from '@lucide/svelte';
 import type { Component } from 'svelte';
 
 const cache = new Map<string, Component | null>();

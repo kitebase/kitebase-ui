@@ -16,7 +16,7 @@
    * is changing the set one is looking at.
    */
   import { getContext } from 'svelte';
-  import { ArrowLeft, Check, Plus, CopyPlus, X, Search, ArrowUpDown, Eraser } from 'lucide-svelte';
+  import { ArrowLeft, Check, Plus, CopyPlus, X, Search, ArrowUpDown, Eraser } from '@lucide/svelte';
   import { _, _t } from '../i18n';
   import { stack as globalStack } from '$kitebase/stack/stack.svelte';
   import type { StackInstance } from '$kitebase/stack/stack.svelte';
