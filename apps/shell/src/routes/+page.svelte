@@ -4,11 +4,11 @@
   // An app with a public part would override this route with its own page.
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { base } from '$app/paths';
+  import { resolve } from '$app/paths';
   import { authStore } from '$kitebase/auth/store.svelte';
 
   onMount(async () => {
-    if (await authStore.start()) goto(`${base}/app`, { replaceState: true });
+    if (await authStore.start()) goto(resolve('/app'), { replace: true });
     else authStore.toLogin();
   });
 </script>

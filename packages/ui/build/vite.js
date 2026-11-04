@@ -3,10 +3,12 @@
  *
  * A client's own vite.config.ts is a two-line wrapper around this: what differs
  * between clients is the app binding, and that is already in kitebase.config.js.
+ * The SvelteKit options (kit.js) go to the sveltekit() plugin.
  */
 import tailwindcss from '@tailwindcss/vite';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { loadEnv } from 'vite';
+import { kitebaseKit } from './kit.js';
 import { kitebasePluginGlobs } from './plugin-globs.js';
 
 /**
@@ -46,7 +48,7 @@ export function kitebaseVite(app) {
     process.env.VITE_HOST_ORIGIN = command === 'serve' ? app.apiBase : '';
 
     return {
-      plugins: [tailwindcss(), sveltekit(), kitebasePluginGlobs(app)],
+      plugins: [tailwindcss(), sveltekit(kitebaseKit(app)), kitebasePluginGlobs(app)],
 
       server: {
         port: env.VITE_DEV_PORT ? parseInt(env.VITE_DEV_PORT) : app.devPort,

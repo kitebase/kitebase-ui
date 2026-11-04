@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { base } from '$app/paths';
+  import { resolve } from '$app/paths';
   import { authStore } from '$kitebase/auth/store.svelte';
 
   // The app's name and texts, from /info: readable before signing in.
@@ -16,7 +16,7 @@
   let showForm = $state(false);
 
   onMount(async () => {
-    if (await authStore.start()) goto(`${base}/`);
+    if (await authStore.start()) goto(resolve('/'));
     else if (authStore.hostLogin) authStore.toLogin();
     else showForm = true;
   });
@@ -24,7 +24,7 @@
   async function handleSubmit(e: SubmitEvent) {
     e.preventDefault();
     const ok = await authStore.login({ username, password });
-    if (ok) goto(`${base}/`);
+    if (ok) goto(resolve('/'));
   }
 </script>
 

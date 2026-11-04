@@ -1,5 +1,6 @@
 /**
- * Shared SvelteKit configuration for every Kitebase client.
+ * Shared SvelteKit configuration for every Kitebase client: the options of the
+ * sveltekit() Vite plugin, which vite.js passes to it.
  *
  * SPA mode (static adapter, fallback to index.html) and the aliases:
  *   $kitebase      this library, consumed from source
@@ -29,14 +30,14 @@ export function kitebaseKit(app) {
   });
 
   return {
-    kit: {
-      adapter: adapter({
-        fallback: 'index.html' // SPA mode: unknown routes → index.html
-      }),
-      // Where the server mounts it (client: in config.yaml): the dev server
-      // uses the same path, so a link that works in one works in the other.
-      paths: { base: app.clientBase ?? '' },
-      alias
-    }
+    adapter: adapter({
+      fallback: 'index.html' // SPA mode: unknown routes → index.html
+    }),
+    // Where the server mounts it (client: in config.yaml): the dev server
+    // uses the same path, so a link that works in one works in the other.
+    paths: { base: app.clientBase ?? '' },
+    // Deprecated in SvelteKit 3 in favour of package.json subpath imports,
+    // which are static: these depend on the app's config.yaml.
+    alias
   };
 }

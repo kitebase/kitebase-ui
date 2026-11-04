@@ -77,7 +77,7 @@ const APP_ROOTS = {
  * @property {string} apiPrefix       API route prefix
  * @property {string} endpointPrefix  dispatcher prefix
  * @property {string} apiBase         backend base URL, the target of the dev proxy
- * @property {string} clientBase      where the client is mounted: '' for the root, or '/admin'
+ * @property {'' | `/${string}`} clientBase      where the client is mounted: '' for the root, or '/admin'
  */
 
 /**
@@ -286,7 +286,7 @@ export function resolveApp({ app, devPort, overridable = false }) {
  *
  * @param {{ role?: string, base?: string } | undefined} section
  * @param {string} configPath  for the error message
- * @returns {string}
+ * @returns {'' | `/${string}`}
  */
 export function clientBase(section, configPath) {
   const role = section?.role ?? 'app';
@@ -298,5 +298,5 @@ export function clientBase(section, configPath) {
   if (base && !base.startsWith('/')) {
     throw new Error(`${configPath}: client.base '${given}' must start with '/'`);
   }
-  return base;
+  return /** @type {'' | `/${string}`} */ (base);
 }

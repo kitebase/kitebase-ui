@@ -6,7 +6,7 @@
   import { authStore } from '$kitebase/auth/store.svelte';
 
   onMount(async () => {
-    if (await authStore.start()) goto('/app', { replaceState: true });
+    if (await authStore.start()) goto('/app', { replace: true });
     else authStore.toLogin();
   });
 </script>

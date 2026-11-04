@@ -20,7 +20,7 @@
 
 import { jwtDecode } from 'jwt-decode';
 import { goto } from '$app/navigation';
-import { base } from '$app/paths';
+import { resolve } from '$app/paths';
 import { api } from '../api/client';
 import { config } from '../config';
 import { hostPage, nextOf, startToken, type ClientInfo } from './host';
@@ -52,7 +52,7 @@ class AuthStore {
         this.user = null;
         this.error = 'Session expired. Please sign in again.';
         if (this.hostLogin) this.toLogin();
-        else goto(`${base}/`);
+        else goto(resolve('/'));
       });
     }
   }
@@ -83,7 +83,7 @@ class AuthStore {
       const origin = config.api.hostOrigin;
       window.location.replace(hostPage(this.hostLogin, origin, nextOf(window.location, origin)));
     } else {
-      goto(`${base}/login`, { replaceState: true });
+      goto(resolve('/login'), { replace: true });
     }
   }
 
