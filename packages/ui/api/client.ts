@@ -176,7 +176,7 @@ class KitebaseAPI {
 
   // ── Generic endpoint dispatcher — all data operations ─────────────────────
   //
-  // All Kitebase operations (db CRUD, query, get_type_schema, ...)
+  // All Kitebase operations (db CRUD, query, get_server_config, ...)
   // go through POST /{endpointPrefix}/{operation}.
   //
   // Examples:
@@ -186,7 +186,7 @@ class KitebaseAPI {
   //   api.endpoint('db', { table: 'User', method: 'update', id: 1, data: {...} })
   //   api.endpoint('db', { table: 'User', method: 'delete', id: 1 })
   //   api.endpoint('query', { format: 'dict', query: { table: 'User', ... } })
-  //   api.endpoint('get_type_schema', { include_builtin: false })
+  //   api.endpoint('get_server_config', {})
 
   async endpoint<T>(operation: string, data: unknown = {}): Promise<APIResponse<T>> {
     try {
