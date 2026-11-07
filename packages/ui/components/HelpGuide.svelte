@@ -24,17 +24,13 @@
   let history = $state<Shown[]>([]);
   let error = $state<string | null>(null);
   let loading = $state(false);
+  let fetching = $state(false);
   let frame = $state<HTMLIFrameElement | null>(null);
 
   const current = $derived(history.at(-1));
 
   async function load(request: GuideRequest, replace: boolean) {
     error = null;
-    if (!request.ref && !request.stack?.length) {
-      history = [];
-      error = _('Open a menu entry to see its guide');
-      return;
-    }
     loading = true;
     try {
       const res = await api.endpoint('get_help', { ...request });
@@ -97,6 +93,17 @@
     frame?.contentWindow?.print();
   }
 
+  // The whole manual of this user, in a new tab: to read, to print, to keep
+  async function manual() {
+    fetching = true;
+    try {
+      const res = await api.download('help_manual');
+      if (res.status !== 'success') error = res.message ?? _('The manual could not be opened');
+    } finally {
+      fetching = false;
+    }
+  }
+
   function onKeydown(e: KeyboardEvent) {
     if (e.key === 'F1' && !e.defaultPrevented) {
       e.preventDefault();
@@ -114,6 +121,8 @@
               disabled={history.length < 2}>{_('Back')}</button>
       <button type="button" class="kb-guide-button" onclick={print}
               disabled={!current}>{_('Print')}</button>
+      <button type="button" class="kb-guide-button" onclick={manual}
+              disabled={fetching}>{_('Manual')}</button>
       {#if loading}<span class="kb-guide-note">{_('Loading…')}</span>{/if}
     </div>
     {#if error}

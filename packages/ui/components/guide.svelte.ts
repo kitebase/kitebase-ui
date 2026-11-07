@@ -10,7 +10,7 @@ import { get } from 'svelte/store';
 import { stack } from '../stack/stack.svelte';
 
 export interface GuideRequest {
-  /** The pages open, from the bottom; empty when no page is open. */
+  /** The pages open, from the bottom; empty at home, which has the head of the manual. */
   stack?: string[];
   /** What a link of a guide points to: a page, `Table` or `Table.column`. */
   ref?: string;

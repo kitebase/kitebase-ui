@@ -112,7 +112,8 @@ registerTranslations('it', {
   'Guide':                    'Guida',
   'Guide (F1)':               'Guida (F1)',
   'Open the guide':           'Apri la guida',
-  'Open a menu entry to see its guide': 'Apri una voce del menu per vederne la guida',
+  'Manual':                   'Manuale',
+  'The manual could not be opened': 'Non è stato possibile aprire il manuale',
   'The guide could not be opened': 'Non è stato possibile aprire la guida',
   'Print':                    'Stampa',
 
