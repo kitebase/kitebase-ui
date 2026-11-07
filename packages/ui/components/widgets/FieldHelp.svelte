@@ -14,9 +14,11 @@
     text: string;
     label?: string;
     open?: boolean;
+    /** Opens the guide on this field: the whole story, beyond the line here. */
+    onguide?: () => void;
   }
 
-  let { text, label = '', open = $bindable(false) }: Props = $props();
+  let { text, label = '', open = $bindable(false), onguide }: Props = $props();
 </script>
 
 <Popover.Root bind:open>
@@ -41,6 +43,11 @@
     >
       {#if label}<p class="mb-1 font-medium text-gray-800">{label}</p>{/if}
       <p class="whitespace-pre-line">{text}</p>
+      {#if onguide}
+        <button type="button" class="mt-1 text-brand hover:underline" onclick={onguide}>
+          {_('Open the guide')}
+        </button>
+      {/if}
     </Popover.Content>
   </Popover.Portal>
 </Popover.Root>

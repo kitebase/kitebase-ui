@@ -24,7 +24,7 @@ const classic: BlueprintDef = {
       // area1 = top strip (used here as the header)
       area1: {
         start: [{ component: 'logo' }, { component: 'title' }],
-        end: [{ component: 'current-user' }, { component: 'login-logout' }],
+        end: [{ component: 'help' }, { component: 'current-user' }, { component: 'login-logout' }],
       },
       // area2 = left strip (used here as the sidebar)
       area2: [{ component: 'menu-tree', props: { rootId: 'main' } }],

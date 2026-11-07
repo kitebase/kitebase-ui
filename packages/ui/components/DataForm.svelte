@@ -36,6 +36,7 @@
   import PluginComponent from './PluginComponent.svelte';
   import { getPluginLoader } from '$kitebase/plugins/context';
   import FieldHelp from './widgets/FieldHelp.svelte';
+  import { openGuide } from './guide.svelte';
   import { _, _t } from '../i18n';
   import { serverConfig } from '../api/serverConfig.svelte';
   import { authStore } from '../auth/store.svelte';
@@ -391,10 +392,21 @@
 
   let helpOpen = $state<string | null>(null);
 
+  // How the guide names a field: `Model.column`, or the field alone in a form
+  // without a model, where the guide opens on the form.
+  function guideFocus(field: FormField): string | undefined {
+    const model = view.source?.model;
+    return model ? `${model}.${field.name}` : undefined;
+  }
+
   function fieldKeys(e: KeyboardEvent, field: FormField) {
-    if (e.key === 'F1' && field.help) {
+    if (e.key === 'F1' && field.help && !helpInline) {
       e.preventDefault();
       helpOpen = helpOpen === field.name ? null : field.name;
+    } else if (e.key === 'F1') {
+      // Nothing quick to say here: the guide, open on this field
+      e.preventDefault();
+      openGuide(guideFocus(field));
     } else if (e.key === 'Escape' && helpOpen === field.name) {
       // An open help takes the key, as an open drop-down does: closing it is
       // not cancelling the form.
@@ -1513,6 +1525,7 @@
     <FieldHelp
       text={field.help as string}
       label={field.label ?? field.name}
+      onguide={() => { helpOpen = null; openGuide(guideFocus(field)); }}
       bind:open={() => helpOpen === field.name, (v) => (helpOpen = v ? field.name : null)}
     />
   {/if}

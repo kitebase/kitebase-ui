@@ -1,6 +1,7 @@
 <script lang="ts">
   import { getContext, type Snippet } from 'svelte';
   import StackContainer from '$kitebase/stack/StackContainer.svelte';
+  import HelpGuide from '$kitebase/components/HelpGuide.svelte';
   import { stack } from '$kitebase/stack/stack.svelte';
 
   // The Desktop work-area. Renders the route content (provided by Chrome via
@@ -22,6 +23,8 @@
       <StackContainer />
     </div>
   {/if}
+  <!-- One guide for the whole work area, whatever chrome is around it -->
+  <HelpGuide />
 </div>
 
 <style>

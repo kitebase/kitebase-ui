@@ -14,6 +14,7 @@ import MenuSidebar from '$kitebase/components/MenuSidebar.svelte';
 import Logo from './components/Logo.svelte';
 import Title from './components/Title.svelte';
 import CurrentUser from './components/CurrentUser.svelte';
+import HelpButton from './components/HelpButton.svelte';
 import LoginLogout from './components/LoginLogout.svelte';
 import Clock from './components/Clock.svelte';
 import CurrentDate from './components/CurrentDate.svelte';
@@ -24,6 +25,7 @@ import WorkArea from './components/WorkArea.svelte';
 export const registry: Record<string, Component<any>> = {
   logo: Logo,
   title: Title,
+  help: HelpButton,
   'current-user': CurrentUser,
   'login-logout': LoginLogout,
   clock: Clock,

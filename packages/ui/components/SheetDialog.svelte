@@ -15,12 +15,15 @@
     side = 'right',
     title,
     description,
+    width,
     children
   }: {
     open?: boolean;
     side?: Side;
     title?: string;
     description?: string;
+    /** The width of a sheet at the left or the right, as CSS (default 20rem). */
+    width?: string;
     children: Snippet;
   } = $props();
 
@@ -40,7 +43,7 @@
 
     <Dialog.Content
       class="fixed z-50 flex flex-col bg-white shadow-xl focus:outline-none"
-      style={panelStyle[side]}
+      style={panelStyle[side] + (width && (side === 'left' || side === 'right') ? `;width:${width}` : '')}
     >
       <div class="flex shrink-0 items-center justify-between border-b border-gray-200 p-4">
         <div>
