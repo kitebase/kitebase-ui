@@ -187,6 +187,7 @@ registerTranslations('it', {
   'less or equal':            'minore o uguale',
   'between':                  'compreso fra',
   'is one of':                'è una di',
+  'has any of':               'ha una fra',
   'is true':                  'è vero',
   'is false':                 'è falso',
   'is empty':                 'è vuoto',

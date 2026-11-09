@@ -31,6 +31,7 @@
   import WidgetFKCombobox from './widgets/WidgetFKCombobox.svelte';
   import WidgetJson from './widgets/WidgetJson.svelte';
   import WidgetChecklist from './widgets/WidgetChecklist.svelte';
+  import WidgetCodeSet from './widgets/WidgetCodeSet.svelte';
   import WidgetMedia from './widgets/WidgetMedia.svelte';
   import WidgetFiles from './widgets/WidgetFiles.svelte';
   import PluginComponent from './PluginComponent.svelte';
@@ -236,6 +237,14 @@
     return new Set((table?.columns ?? []).filter((c) => c.editable === false).map((c) => c.name));
   });
 
+  // The key of a record that exists: typed on insert when the database does not
+  // assign it, never changed afterwards, since other rows refer to it.
+  let lockedKey = $derived.by(() => {
+    const id = resolveRecordId();
+    if (id === null || id === undefined) return new Set<string>();
+    return new Set(serverConfig.tables[view.source?.model ?? '']?.pk_fields ?? []);
+  });
+
   // Columns the server never sends back (a password): what was typed must not
   // stay on screen after saving, nor go out again with the next save.
   let secretColumns = $derived.by(() => {
@@ -423,7 +432,12 @@
   // when the focus merely passes through it (a dialog moving the focus, Tab).
   const edited = new Set<string>();
 
+  const isBlank = (v: unknown) => v === undefined || v === null || v === '';
+
   function patch(name: string, value: unknown) {
+    // An empty field left empty is no edit: a widget that writes null on blur
+    // must neither raise "required" nor make an untouched form look changed.
+    if (isBlank(value) && isBlank(draft[name])) return;
     draft[name] = value;
     edited.add(name);
   }
@@ -1342,7 +1356,8 @@
 
 <!-- ── Field content snippet ────────────────────────────────────────────── -->
 {#snippet fieldContent(field: FormField)}
-  {@const fieldReadonly = !isEditable || field.readonly === true || lockedColumns.has(field.name)}
+  {@const fieldReadonly = !isEditable || field.readonly === true || lockedColumns.has(field.name)
+    || lockedKey.has(field.name)}
   {@const error = errors[field.name]}
   {@const widgetType = resolveWidget(field)}
 
@@ -1485,6 +1500,14 @@
         onblur={() => leaveField(field.name)}
         readonly={fieldReadonly}
         record={draft}
+        {field}
+      />
+    {:else if widgetType === 'codeset'}
+      <WidgetCodeSet
+        value={draft[field.name]}
+        onchange={(v) => patch(field.name, v)}
+        onblur={() => leaveField(field.name)}
+        readonly={fieldReadonly}
         {field}
       />
     {:else if widgetType === 'checklist'}

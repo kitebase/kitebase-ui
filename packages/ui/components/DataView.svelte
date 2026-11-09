@@ -453,11 +453,12 @@
   // the first row leaves a column raw whenever that row has it empty (a date
   // nobody filled yet), and then every row below is raw too. A view column is
   // a column of the main table, or `Table.col as alias` through a join; either
-  // way it names a real column with a declared type. Only the date formats are
-  // taken from the type: the other type formatters (`fk_label`, `integer`) are
-  // not all registered, and a number reads fine unformatted.
+  // way it names a real column with a declared type. Only the date formats and
+  // the codes of a set are taken from the type: the other type formatters
+  // (`fk_label`, `integer`) are not all registered, and a number reads fine
+  // unformatted.
 
-  const DATE_FORMATS = new Set(['date', 'datetime']);
+  const TYPE_FORMATS = new Set(['date', 'datetime', 'codes']);
 
   // The variants the view columns name (`variant: thumb`), sent with every
   // query: the server signs the URL of that rendition, never the original.
@@ -491,7 +492,7 @@
       const align = resolveAlign(type, serverConfig.types);
       if (align) aligns[key] = align;
       const fmt = resolveFormatterByType(type, serverConfig.types);
-      if (fmt && DATE_FORMATS.has(fmt)) {
+      if (fmt && TYPE_FORMATS.has(fmt)) {
         formatters[key] = fmt === 'datetime' && column?.granularity === 'second' ? 'datetime,second' : fmt;
       }
     }

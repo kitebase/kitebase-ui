@@ -23,3 +23,18 @@ describe('datetime', () => {
     expect(show('datetime', null)).toBe('');
   });
 });
+
+describe('codes', () => {
+  it('shows the codes of a set one after the other', () => {
+    expect(show('codes', ['C', 'S'])).toBe('C, S');
+  });
+
+  it('shows nothing for an empty set', () => {
+    expect(show('codes', [])).toBe('');
+    expect(show('codes', null)).toBe('');
+  });
+
+  it('escapes what it puts in', () => {
+    expect(show('codes', ['<b>'])).toBe('&lt;b&gt;');
+  });
+});

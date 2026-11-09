@@ -18,7 +18,7 @@ import { operatorsFor } from './dataview.rules';
 
 /** What decides both the operator list and the value widget. */
 export type FieldPrimitive =
-  | 'string' | 'number' | 'boolean' | 'date' | 'datetime' | 'time' | 'fk';
+  | 'string' | 'number' | 'boolean' | 'date' | 'datetime' | 'time' | 'fk' | 'codes';
 
 export interface FilterField {
   /** The rule's `field`: a column name today, a declared path tomorrow. */
@@ -27,6 +27,8 @@ export interface FilterField {
   primitive: FieldPrimitive;
   /** Target table of a foreign key — the lookup the value widget opens. */
   fkTarget?: string;
+  /** Where the codes of a set come from — the value widget's choices. */
+  choicesEndpoint?: string;
   /** Part of the primary key. */
   pk?: boolean;
   /**
@@ -40,8 +42,9 @@ export interface FilterField {
 }
 
 // ── Primitive resolution ───────────────────────────────────────────────────
-// The base SQLAlchemy type names are the only fixed point: a plugin type is
-// followed up its inheritance chain until one of them answers.
+// The base type names are the only fixed point — SQLAlchemy's and the core's
+// own — and a plugin type is followed up its inheritance chain until one of
+// them answers.
 
 const BASE_PRIMITIVE: Record<string, FieldPrimitive> = {
   String: 'string', Text: 'string', Unicode: 'string', UnicodeText: 'string',
@@ -49,6 +52,7 @@ const BASE_PRIMITIVE: Record<string, FieldPrimitive> = {
   Float: 'number', Numeric: 'number', Decimal: 'number',
   Boolean: 'boolean',
   Date: 'date', DateTime: 'datetime', Time: 'time',
+  CodeSet: 'codes',
 };
 
 /** Types nothing sensible can be asked of in a where clause. */
@@ -163,6 +167,7 @@ function filterField(
     label: col.label ?? humanize(col.name),
     primitive,
     ...(fk ? { fkTarget: fk.target } : {}),
+    ...(col.choices_endpoint ? { choicesEndpoint: col.choices_endpoint } : {}),
     ...(pk ? { pk: true } : {}),
     ...(pk || col.index === true || col.unique === true || leading.has(col.name)
       ? { indexed: true } : {}),
@@ -173,9 +178,10 @@ function filterField(
 /**
  * The same fields for the order combo: by `query_rank` first, and within a
  * rank the ones the database can order cheaply on top — the key, then the
- * indexed columns, then the rest in their own order.
+ * indexed columns, then the rest in their own order. A set of codes is left
+ * out: its stored form sorts, but by nothing a reader would recognise.
  */
 export function orderFields(fields: FilterField[]): FilterField[] {
   const cheap = (f: FilterField) => (f.pk ? 0 : f.indexed ? 1 : 2);
-  return [...fields].sort((a, b) => rankWeight(a) - rankWeight(b) || cheap(a) - cheap(b));
+  return fields.filter(f => f.primitive !== 'codes').sort((a, b) => rankWeight(a) - rankWeight(b) || cheap(a) - cheap(b));
 }

@@ -10,6 +10,7 @@ const types: TypeRegistry = {
   ID:        { inheritance: ['Integer'], builtin: false },
   Payload:   { inheritance: ['JSON'], builtin: false },
   Odd:       { inheritance: [], builtin: false, python_type: 'str' },
+  Roles:     { inheritance: ['CodeSet'], builtin: false },
 };
 
 const table = (columns: TableInfo['columns'], extra: Partial<TableInfo> = {}): TableInfo => ({
@@ -103,6 +104,22 @@ describe('filterFields', () => {
 
   it('has nothing to say about a table it does not know', () => {
     expect(filterFields(undefined, types)).toEqual([]);
+  });
+});
+
+describe('a set of codes', () => {
+  it('is asked with its own primitive, the core type or one derived from it', () => {
+    expect(fieldPrimitive('CodeSet', types)).toBe('codes');
+    expect(fieldPrimitive('Roles', types)).toBe('codes');
+  });
+
+  it('carries where its codes come from, and is never offered for ordering', () => {
+    const fields = filterFields(table([
+      { name: 'id', type: 'Integer' },
+      { name: 'roles', type: 'Roles', choices_endpoint: 'partner_roles' },
+    ]), types);
+    expect(fields[1]).toMatchObject({ name: 'roles', primitive: 'codes', choicesEndpoint: 'partner_roles' });
+    expect(orderFields(fields).map(f => f.name)).toEqual(['id']);
   });
 });
 

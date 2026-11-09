@@ -222,6 +222,13 @@ describe('operatorsFor', () => {
     expect(operatorsFor('fk')).not.toContain('contains');
   });
 
+  it('asks a set of codes which codes it holds', () => {
+    expect(operatorsFor('codes')).toEqual(['has', 'empty', 'notempty']);
+    expect(isComplete(r('roles', 'has', ['C']))).toBe(true);
+    expect(isComplete(r('roles', 'has', []))).toBe(false);
+    expect(serializeRule(r('roles', 'has', ['C', 'S']))).toEqual({ roles: ['has', ['C', 'S']] });
+  });
+
   it('falls back to the string operators for an unknown primitive', () => {
     expect(operatorsFor('nope')).toEqual(operatorsFor('string'));
   });

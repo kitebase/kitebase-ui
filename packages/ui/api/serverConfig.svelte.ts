@@ -34,6 +34,9 @@ export const BASE_WIDGET_MAP: Record<string, string> = {
   Time:        'time',
   JSON:        'json',
   LargeBinary: 'file',
+  // A type of the core: a list of codes from a vocabulary the field names
+  // (`choices` or `choices_endpoint`)
+  CodeSet:     'codeset',
 };
 
 export const BASE_FORMATTER_MAP: Record<string, string> = {
@@ -45,6 +48,7 @@ export const BASE_FORMATTER_MAP: Record<string, string> = {
   Date:     'date',
   DateTime: 'datetime',
   FK:       'fk_label',
+  CodeSet:  'codes',
 };
 
 export const BASE_ALIGN_MAP: Record<string, 'left' | 'right' | 'center'> = {
@@ -121,6 +125,8 @@ export type QueryRank = 'top' | 'normal' | 'low' | 'more' | 'none';
 export interface TableColumnInfo {
   name: string;
   type?: string;
+  /** The endpoint serving the codes a CodeSet column picks from. */
+  choices_endpoint?: string;
   label?: string;
   virtual?: boolean;
   editable?: boolean;

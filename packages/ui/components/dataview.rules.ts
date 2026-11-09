@@ -21,7 +21,7 @@
 export type RuleOperator =
   | 'contains' | 'startswith'
   | 'eq' | 'ne' | 'gt' | 'ge' | 'lt' | 'le'
-  | 'between' | 'in'
+  | 'between' | 'in' | 'has'
   | 'istrue' | 'isfalse'
   | 'empty' | 'notempty';
 
@@ -31,7 +31,7 @@ export type ValueArity = 'none' | 'one' | 'two' | 'many';
 export const OPERATOR_ARITY: Record<RuleOperator, ValueArity> = {
   contains: 'one', startswith: 'one',
   eq: 'one', ne: 'one', gt: 'one', ge: 'one', lt: 'one', le: 'one',
-  between: 'two', in: 'many',
+  between: 'two', in: 'many', has: 'many',
   istrue: 'none', isfalse: 'none',
   empty: 'none', notempty: 'none',
 };
@@ -65,6 +65,9 @@ export const OPERATORS_BY_PRIMITIVE: Record<string, RuleOperator[]> = {
   // expressible for a rule declared in YAML, where there is no widget to fill.
   boolean: ['eq', 'empty', 'notempty'],
   fk: ['eq', 'in', 'between', 'empty', 'notempty'],
+  // A set of codes is asked which codes it holds: `has` with several is any of
+  // them. Holding none is stored as nothing, so `empty` asks that.
+  codes: ['has', 'empty', 'notempty'],
 };
 
 export function operatorsFor(primitive: string, override?: RuleOperator[]): RuleOperator[] {
@@ -88,7 +91,7 @@ export const OPERATOR_WORD: Record<RuleOperator, string> = {
   eq: 'is', ne: 'is not',
   gt: 'greater than', ge: 'greater or equal',
   lt: 'less than', le: 'less or equal',
-  between: 'between', in: 'is one of',
+  between: 'between', in: 'is one of', has: 'has any of',
   istrue: 'is true', isfalse: 'is false',
   empty: 'is empty', notempty: 'is not empty',
 };

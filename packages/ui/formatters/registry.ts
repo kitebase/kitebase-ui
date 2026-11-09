@@ -5,6 +5,7 @@
  *   1. DATE_FORMATTERS  — built-in kitebase: date, datetime, time
  *                         (`datetime` shows hours and minutes; `datetime,second`
  *                         adds the seconds, as `granularity: second` does);
+ *                         `codes`, the codes of a set (CodeSet) one after the other;
  *                         MEDIA_FORMATTERS (media.ts): media_image, media_file
  *   2. formatterRegistry — registered by plugins via formatters.ts files
  *   3. raw string       — passed to Tabulator as built-in formatter name
@@ -50,6 +51,19 @@ const DATE_FORMATTERS: Record<string, CellFormatter> = {
   date:     (cell) => { const d = _parseDate(cell.getValue()); return d ? d.toLocaleDateString()  : String(cell.getValue() ?? ''); },
   datetime: (cell, params) => { const d = _parseDate(cell.getValue()); return d ? _datetimeText(d, params?.granularity) : String(cell.getValue() ?? ''); },
   time:     (cell) => { const d = _parseDate(cell.getValue()); return d ? d.toLocaleTimeString()  : String(cell.getValue() ?? ''); },
+};
+
+// A set of codes arrives as a list: shown as the codes, comma separated, the
+// way they are written. An escaped string, since Tabulator puts it in as HTML.
+function _escape(s: string): string {
+  return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+}
+
+const SET_FORMATTERS: Record<string, CellFormatter> = {
+  codes: (cell) => {
+    const v = cell.getValue();
+    return _escape(Array.isArray(v) ? v.join(', ') : String(v ?? ''));
+  },
 };
 
 // ── Shorthand schemas for Tabulator built-in formatters ───────────────────
@@ -103,8 +117,8 @@ export function resolveFormatter(
   const name     = commaIdx === -1 ? rawFmt : rawFmt.slice(0, commaIdx).trim();
   const args     = commaIdx === -1 ? [] : rawFmt.slice(commaIdx + 1).split(',').map(s => s.trim());
 
-  // 1. Built-in formatters: dates and media
-  const mediaFmt = MEDIA_FORMATTERS[name];
+  // 1. Built-in formatters: dates, sets and media
+  const mediaFmt = MEDIA_FORMATTERS[name] ?? SET_FORMATTERS[name];
   if (mediaFmt) return { formatter: mediaFmt, formatterParams: explicitParams };
   const dateFmt = DATE_FORMATTERS[name];
   if (dateFmt) {

@@ -1,8 +1,9 @@
 <script lang="ts">
   /**
-   * A set of codes from a small vocabulary, as a list of checkboxes: the roles
-   * of a user, the roles of a partner. The value is the array of the codes
-   * checked, in the order of the choices.
+   * A set of codes from a small vocabulary, every choice on show as a checkbox:
+   * the roles of a user. A longer vocabulary wants `codeset`, its choices in a
+   * popup. The value is the array of the codes checked, in the order of the
+   * choices.
    *
    * The choices come with the field (`choices`) or from an endpoint
    * (`choices_endpoint`), each `{ value, label, group?, implies? }`:
@@ -15,15 +16,8 @@
    */
   import { untrack } from 'svelte';
   import { _ } from '../../i18n';
-  import { api } from '$kitebase/api/client';
   import type { FormField } from '../dataform.types';
-
-  interface Choice {
-    value: string;
-    label: string;
-    group?: string;
-    implies?: string[];
-  }
+  import { type CodeChoice as Choice, fetchChoices } from './choices';
 
   interface Props {
     value: unknown;
@@ -45,9 +39,7 @@
     if (!name) return;
     untrack(async () => {
       try {
-        const res = await api.endpoint(name, {});
-        if (res.status === 'success') fetched = res.data as Choice[];
-        else loadError = res.message ?? _('The choices could not be loaded');
+        fetched = await fetchChoices(name);
       } catch (e) {
         loadError = e instanceof Error ? e.message : String(e);
       }

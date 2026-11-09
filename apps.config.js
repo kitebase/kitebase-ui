@@ -213,9 +213,15 @@ export function readAppConfig(root) {
   return deepMerge(merged, own);
 }
 
-/** `b` over `a`: mappings key by key, anything else replaced. */
+/**
+ * `b` over `a`: mappings key by key, anything else replaced.
+ *
+ * @param {Record<string, any>} a
+ * @param {Record<string, any>} b
+ * @returns {Record<string, any>}
+ */
 function deepMerge(a, b) {
-  const isMap = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+  const isMap = (/** @type {unknown} */ v) => v !== null && typeof v === 'object' && !Array.isArray(v);
   const out = { ...a };
   for (const [k, v] of Object.entries(b)) {
     out[k] = isMap(out[k]) && isMap(v) ? deepMerge(out[k], v) : v;

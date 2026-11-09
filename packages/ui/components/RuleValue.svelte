@@ -16,6 +16,7 @@
   import { X } from '@lucide/svelte';
   import { _ } from '../i18n';
   import WidgetFKCombobox from './widgets/WidgetFKCombobox.svelte';
+  import WidgetCodeSet from './widgets/WidgetCodeSet.svelte';
   import type { FormField } from './dataform.types';
   import type { FilterField } from './dataview.fields';
   import { OPERATOR_ARITY, type RuleOperator } from './dataview.rules';
@@ -115,6 +116,13 @@
   // A foreign key has no values, it has records: the widget is the form's own
   // FK combobox, which sends the typed text as the query's `search` key. What
   // it writes is the stored key, which is why a range over it is well defined.
+  // A set of codes is picked from its vocabulary, with the form's own popup.
+  const codesField = $derived({
+    name: field.name,
+    label: field.label,
+    choices_endpoint: field.choicesEndpoint,
+  } as unknown as FormField);
+
   const fkField = $derived({
     name: field.name,
     label: field.label,
@@ -168,6 +176,11 @@
       aria-label={_('To')} placeholder={_('To')}
     />
   {/if}
+
+{:else if field.primitive === 'codes'}
+  <div class="kb-rv-fk">
+    <WidgetCodeSet value={value ?? []} field={codesField} onchange={(v) => onchange(v)} />
+  </div>
 
 {:else if arity === 'many'}
   <div class="kb-rv-chips">
