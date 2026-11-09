@@ -17,6 +17,8 @@
   import { _ } from '../i18n';
   import WidgetFKCombobox from './widgets/WidgetFKCombobox.svelte';
   import WidgetCodeSet from './widgets/WidgetCodeSet.svelte';
+  import WidgetRefSet from './widgets/WidgetRefSet.svelte';
+  import { refsetName } from '../formatters/refset';
   import type { FormField } from './dataform.types';
   import type { FilterField } from './dataview.fields';
   import { OPERATOR_ARITY, type RuleOperator } from './dataview.rules';
@@ -123,6 +125,20 @@
     choices_endpoint: field.choicesEndpoint,
   } as unknown as FormField);
 
+  // The entries of a RefSet are records of its vocabulary: the form's badge
+  // widget, without adding new ones, since a filter only names what exists.
+  const refsetField = $derived({
+    name: field.name,
+    label: field.label,
+    ref_set: { ...field.refSet, create: false },
+  } as unknown as FormField);
+
+  function setRefs(keys: unknown[]) {
+    onchange(keys);
+    const target = field.refSet?.target;
+    if (target) onlabels?.(keys.map((k) => refsetName(target, k) ?? String(k)));
+  }
+
   const fkField = $derived({
     name: field.name,
     label: field.label,
@@ -176,6 +192,11 @@
       aria-label={_('To')} placeholder={_('To')}
     />
   {/if}
+
+{:else if field.primitive === 'refset'}
+  <div class="kb-rv-fk">
+    <WidgetRefSet value={value ?? []} field={refsetField} onchange={setRefs} />
+  </div>
 
 {:else if field.primitive === 'codes'}
   <div class="kb-rv-fk">

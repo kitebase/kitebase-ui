@@ -6,6 +6,7 @@
  *                         (`datetime` shows hours and minutes; `datetime,second`
  *                         adds the seconds, as `granularity: second` does);
  *                         `codes`, the codes of a set (CodeSet) one after the other;
+ *                         `refset,<target>,<key>,<name>`, the names of a RefSet's keys as badges;
  *                         MEDIA_FORMATTERS (media.ts): media_image, media_file
  *   2. formatterRegistry — registered by plugins via formatters.ts files
  *   3. raw string       — passed to Tabulator as built-in formatter name
@@ -18,6 +19,7 @@
  */
 
 import { MEDIA_FORMATTERS } from './media';
+import { refset, refsetParams } from './refset';
 
 export type CellFormatter   = (cell: any, params: any, onRendered?: any) => string | HTMLElement;
 export type ShorthandParser = (args: string[]) => Record<string, unknown>;
@@ -118,6 +120,9 @@ export function resolveFormatter(
   const args     = commaIdx === -1 ? [] : rawFmt.slice(commaIdx + 1).split(',').map(s => s.trim());
 
   // 1. Built-in formatters: dates, sets and media
+  if (name === 'refset') {
+    return { formatter: refset, formatterParams: explicitParams ?? refsetParams(args) };
+  }
   const mediaFmt = MEDIA_FORMATTERS[name] ?? SET_FORMATTERS[name];
   if (mediaFmt) return { formatter: mediaFmt, formatterParams: explicitParams };
   const dateFmt = DATE_FORMATTERS[name];

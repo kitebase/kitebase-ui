@@ -51,6 +51,7 @@ export const BASE_FORMATTER_MAP: Record<string, string> = {
   DateTime: 'datetime',
   FK:       'fk_label',
   CodeSet:  'codes',
+  RefSet:   'refset',
 };
 
 export const BASE_ALIGN_MAP: Record<string, 'left' | 'right' | 'center'> = {

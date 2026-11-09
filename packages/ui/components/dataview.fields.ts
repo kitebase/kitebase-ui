@@ -18,7 +18,7 @@ import { operatorsFor } from './dataview.rules';
 
 /** What decides both the operator list and the value widget. */
 export type FieldPrimitive =
-  | 'string' | 'number' | 'boolean' | 'date' | 'datetime' | 'time' | 'fk' | 'codes';
+  | 'string' | 'number' | 'boolean' | 'date' | 'datetime' | 'time' | 'fk' | 'codes' | 'refset';
 
 export interface FilterField {
   /** The rule's `field`: a column name today, a declared path tomorrow. */
@@ -29,6 +29,8 @@ export interface FilterField {
   fkTarget?: string;
   /** Where the codes of a set come from — the value widget's choices. */
   choicesEndpoint?: string;
+  /** The vocabulary a RefSet holds keys of — the value widget searches it. */
+  refSet?: { target: string; field: string };
   /** Part of the primary key. */
   pk?: boolean;
   /**
@@ -158,7 +160,8 @@ function filterField(
   if (col.secret || col.virtual || col.query_rank === 'none') return null;
 
   const fk = col.foreign_key;
-  const primitive = fk ? 'fk' : fieldPrimitive(col.type, types);
+  const refSet = col.type === 'RefSet' ? col.ref_set : undefined;
+  const primitive = fk ? 'fk' : refSet ? 'refset' : fieldPrimitive(col.type, types);
   if (!primitive) return null;
 
   const pk = pkSet.has(col.name);
@@ -168,6 +171,7 @@ function filterField(
     primitive,
     ...(fk ? { fkTarget: fk.target } : {}),
     ...(col.choices_endpoint ? { choicesEndpoint: col.choices_endpoint } : {}),
+    ...(refSet ? { refSet: { target: refSet.target, field: refSet.field } } : {}),
     ...(pk ? { pk: true } : {}),
     ...(pk || col.index === true || col.unique === true || leading.has(col.name)
       ? { indexed: true } : {}),
@@ -183,5 +187,5 @@ function filterField(
  */
 export function orderFields(fields: FilterField[]): FilterField[] {
   const cheap = (f: FilterField) => (f.pk ? 0 : f.indexed ? 1 : 2);
-  return fields.filter(f => f.primitive !== 'codes').sort((a, b) => rankWeight(a) - rankWeight(b) || cheap(a) - cheap(b));
+  return fields.filter(f => f.primitive !== 'codes' && f.primitive !== 'refset').sort((a, b) => rankWeight(a) - rankWeight(b) || cheap(a) - cheap(b));
 }

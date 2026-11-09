@@ -22,6 +22,7 @@ export type RuleOperator =
   | 'contains' | 'startswith'
   | 'eq' | 'ne' | 'gt' | 'ge' | 'lt' | 'le'
   | 'between' | 'in' | 'has'
+  | 'any_of' | 'all_of' | 'none_of'
   | 'istrue' | 'isfalse'
   | 'empty' | 'notempty';
 
@@ -32,6 +33,7 @@ export const OPERATOR_ARITY: Record<RuleOperator, ValueArity> = {
   contains: 'one', startswith: 'one',
   eq: 'one', ne: 'one', gt: 'one', ge: 'one', lt: 'one', le: 'one',
   between: 'two', in: 'many', has: 'many',
+  any_of: 'many', all_of: 'many', none_of: 'many',
   istrue: 'none', isfalse: 'none',
   empty: 'none', notempty: 'none',
 };
@@ -68,6 +70,8 @@ export const OPERATORS_BY_PRIMITIVE: Record<string, RuleOperator[]> = {
   // A set of codes is asked which codes it holds: `has` with several is any of
   // them. Holding none is stored as nothing, so `empty` asks that.
   codes: ['has', 'empty', 'notempty'],
+  // A RefSet is asked which entries of its vocabulary it holds: some, all or none
+  refset: ['any_of', 'all_of', 'none_of'],
 };
 
 export function operatorsFor(primitive: string, override?: RuleOperator[]): RuleOperator[] {
@@ -92,6 +96,7 @@ export const OPERATOR_WORD: Record<RuleOperator, string> = {
   gt: 'greater than', ge: 'greater or equal',
   lt: 'less than', le: 'less or equal',
   between: 'between', in: 'is one of', has: 'has any of',
+  any_of: 'has any of', all_of: 'has all of', none_of: 'has none of',
   istrue: 'is true', isfalse: 'is false',
   empty: 'is empty', notempty: 'is not empty',
 };

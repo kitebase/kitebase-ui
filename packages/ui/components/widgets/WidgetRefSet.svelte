@@ -18,6 +18,7 @@
   import { _, _t } from '../../i18n';
   import { api } from '$kitebase/api/client';
   import { serverConfig } from '$kitebase/api/serverConfig.svelte';
+  import { refsetName, rememberNames } from '../../formatters/refset';
   import type { FormField } from '../dataform.types';
 
   interface Props {
@@ -52,7 +53,8 @@
 
   const keyOf = (v: unknown) => String(v);
   const isNew = (v: unknown) => typeof v === 'string' && added.has(v);
-  const labelOf = (v: unknown) => labels.get(keyOf(v)) ?? String(v);
+  const labelOf = (v: unknown) =>
+    labels.get(keyOf(v)) ?? (target ? refsetName(target, v) : undefined) ?? String(v);
 
   // Labels for the keys the value brings that are not known yet: one query for all
   $effect(() => {
@@ -81,6 +83,7 @@
         for (const r of res.data as Record<string, unknown>[]) {
           labels.set(keyOf(r[pk]), String(r[df] ?? ''));
         }
+        rememberNames(table, (res.data as Record<string, unknown>[]).map((r) => [r[pk], String(r[df] ?? '')]));
       }
     } catch (_) {}
   }
@@ -127,6 +130,7 @@
           .filter((o) => !chosen.has(keyOf(o.key)));
         highlighted = options.length ? 0 : -1;
         for (const o of options) labels.set(keyOf(o.key), o.label);
+        rememberNames(tbl, options.map((o) => [o.key, o.label]));
       }
     } finally {
       searching = false;

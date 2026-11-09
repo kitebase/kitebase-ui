@@ -364,3 +364,19 @@ describe('declaredRules', () => {
     expect(declaredRules({})).toBeUndefined();
   });
 });
+
+describe('RefSet operators', () => {
+  it('asks some, all or none of the entries', () => {
+    expect(operatorsFor('refset')).toEqual(['any_of', 'all_of', 'none_of']);
+  });
+
+  it('serializes as an operator on the field with the list of keys', () => {
+    expect(serializeRule(r('tags', 'all_of', [3, 7]))).toEqual({ tags: ['all_of', [3, 7]] });
+    expect(serializeRule(r('tags', 'none_of', [3]))).toEqual({ tags: ['none_of', [3]] });
+  });
+
+  it('is complete once a key is chosen', () => {
+    expect(isComplete(r('tags', 'any_of', [3]))).toBe(true);
+    expect(isComplete(r('tags', 'any_of', []))).toBe(false);
+  });
+});

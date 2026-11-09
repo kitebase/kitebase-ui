@@ -487,6 +487,12 @@
       if (column?.media === 'image' || column?.media === 'file') {
         formatters[key] = column.media === 'image' ? 'media_image' : 'media_file';
       }
+      // A RefSet's badges need its vocabulary, which only the column knows
+      if (column?.type === 'RefSet' && column.ref_set) {
+        const { target, field } = column.ref_set;
+        formatters[key] = `refset,${target},${field},${serverConfig.tables[target]?.display_field ?? field}`;
+        continue;
+      }
       const type = column?.type;
       if (!type) continue;
       const align = resolveAlign(type, serverConfig.types);
@@ -846,6 +852,23 @@
   function handleSearch(text: string) {
     if (text === quickSearch) return;
     changeSet(() => { quickSearch = text; });
+  }
+
+  /**
+   * A click on a badge of a RefSet column (formatters/refset.ts) narrows the
+   * list to the rows holding it: a rule added beside the others, never twice.
+   */
+  function handleBadgeClick(e: MouseEvent) {
+    const badge = (e.target as HTMLElement).closest<HTMLElement>('[data-refset-key]');
+    if (!badge?.dataset.refsetField || badge.dataset.refsetKey === undefined) return;
+    e.stopPropagation();
+    const field = badge.dataset.refsetField;
+    const key = JSON.parse(badge.dataset.refsetKey);
+    const same = ruleRows.some((r) => r.rule.field === field && r.rule.op === 'any_of'
+      && Array.isArray(r.rule.value) && r.rule.value.length === 1 && r.rule.value[0] === key);
+    if (same) return;
+    setRules([...ruleRows, { rule: { field, op: 'any_of', value: [key],
+                                     labels: [badge.textContent ?? String(key)] }, join: 'and' }]);
   }
 
   /** The rule editor's way in — its stack page returns here (querybuilder.md §7). */
@@ -1301,7 +1324,9 @@
       {/if}
       <!-- DataViewTable handles 'table' and 'tree', and stays mounted under
            the cards: it owns the loaded rows. -->
-      <div class="kb-dv-table" class:kb-dv-hidden={isCards}>
+      <!-- svelte-ignore a11y_click_events_have_key_events -->
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <div class="kb-dv-table" class:kb-dv-hidden={isCards} onclickcapture={handleBadgeClick}>
       <DataViewTable
         bind:this={tableRef}
         {rows}
@@ -1339,6 +1364,28 @@
 </div>
 
 <style>
+  /* The badges of a RefSet column: drawn by its formatter, outside this component */
+  :global(.kb-refset-cell) {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.25rem;
+    overflow: hidden;
+  }
+  :global(.kb-refset-cell-badge) {
+    padding: 0 0.4rem;
+    border: 1px solid var(--kb-accent-border);
+    border-radius: 9999px;
+    background: var(--kb-accent-subtle);
+    font-size: 0.75rem;
+    line-height: 1.125rem;
+    color: var(--kb-text);
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  :global(.kb-refset-cell-badge:hover) {
+    border-color: var(--kb-accent);
+  }
+
   .kb-dataview {
     position: relative;
     display: flex;

@@ -173,3 +173,22 @@ describe('query_rank', () => {
     expect(orderFields(fields).map(f => f.name)).toEqual(['code2', 'id', 'code', 'name', 'stamp']);
   });
 });
+
+describe('a RefSet field', () => {
+  const books = table([
+    { name: 'id', type: 'Integer' },
+    { name: 'title', type: 'String' },
+    { name: 'tags', type: 'RefSet', ref_set: { target: 'BookTag', field: 'id', create: true } },
+  ]);
+
+  it('is a field of its own primitive, carrying its vocabulary', () => {
+    const tags = filterFields(books, types).find((f) => f.name === 'tags');
+    expect(tags?.primitive).toBe('refset');
+    expect(tags?.refSet).toEqual({ target: 'BookTag', field: 'id' });
+  });
+
+  it('orders nothing', () => {
+    const fields = filterFields(books, types);
+    expect(orderFields(fields).map((f) => f.name)).not.toContain('tags');
+  });
+});
