@@ -10,7 +10,7 @@ import { describe, expect, it, afterEach } from 'vitest';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { resolve } from 'path';
-import { resolveApp } from './apps.config.js';
+import { readAppConfig, resolveApp } from './apps.config.js';
 
 /** An app-instance holding the given `plugins:` list, reached as an outside app. */
 function anApp(pluginsYaml) {
@@ -30,6 +30,7 @@ const resolved = () => resolveApp({ app: 'sample', devPort: 5174, overridable: t
 
 afterEach(() => {
   delete process.env.KITEBASE_APP_ROOT;
+  delete process.env.KITEBASE_CONFIG;
 });
 
 describe('the plugin roots', () => {
@@ -117,5 +118,24 @@ describe('where the client is mounted', () => {
     expect(() => resolved()).toThrow(/client.role 'backoffice'/);
     anApp('client:\n  base: admin\n');
     expect(() => resolved()).toThrow(/must start with '\/'/);
+  });
+});
+
+describe('a variant of config.yaml', () => {
+  it('is read as the server reads it: the base, with what the variant changes', () => {
+    const root = anApp('plugins: [plugins]\napi: { port: 8300, prefix: kitebase }\n');
+    writeFileSync(resolve(root, 'config.pg.yaml'), 'extends: config.yaml\napi: { port: 8310 }\n');
+    expect(resolved().apiBase).toBe('http://localhost:8300');
+    process.env.KITEBASE_CONFIG = 'config.pg.yaml';
+    expect(readAppConfig(root).api).toEqual({ port: 8310, prefix: 'kitebase' });
+    expect(resolved().apiBase).toBe('http://localhost:8310');
+  });
+
+  it('extends one level only', () => {
+    const root = anApp('plugins: [plugins]\n');
+    writeFileSync(resolve(root, 'config.a.yaml'), 'extends: config.yaml\n');
+    writeFileSync(resolve(root, 'config.b.yaml'), 'extends: config.a.yaml\n');
+    process.env.KITEBASE_CONFIG = 'config.b.yaml';
+    expect(() => readAppConfig(root)).toThrow(/one level/);
   });
 });

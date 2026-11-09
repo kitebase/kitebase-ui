@@ -185,6 +185,45 @@ function scanRoot(root) {
 }
 
 /**
+ * The configuration of an app-instance as its server reads it: config.yaml,
+ * or the variant KITEBASE_CONFIG names beside it (`kitebase dev --config`),
+ * which writes `extends: config.yaml` and only what it changes. The same rule
+ * as kitebase.plugins.compose_config: a mapping merged key by key, any other
+ * value replaced, one level of extends.
+ *
+ * @param {string} root  the app-instance directory
+ * @returns {Record<string, any>}
+ */
+export function readAppConfig(root) {
+  const name = process.env.KITEBASE_CONFIG || 'config.yaml';
+  const path = resolve(root, name);
+  if (dirname(path) !== resolve(root)) {
+    throw new Error(`KITEBASE_CONFIG=${name}: a configuration sits beside config.yaml, in ${root}`);
+  }
+  if (!existsSync(path)) throw new Error(`KITEBASE_CONFIG=${name}: no such file in ${root}`);
+  const data = parse(readFileSync(path, 'utf8')) ?? {};
+  const { extends: base, ...own } = data;
+  if (base === undefined) return data;
+  const basePath = resolve(root, base);
+  if (!existsSync(basePath)) throw new Error(`${name} extends ${base}: no such file in ${root}`);
+  const merged = parse(readFileSync(basePath, 'utf8')) ?? {};
+  if ('extends' in merged) {
+    throw new Error(`${name} extends ${base}, which extends another: one level only`);
+  }
+  return deepMerge(merged, own);
+}
+
+/** `b` over `a`: mappings key by key, anything else replaced. */
+function deepMerge(a, b) {
+  const isMap = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+  const out = { ...a };
+  for (const [k, v] of Object.entries(b)) {
+    out[k] = isMap(out[k]) && isMap(v) ? deepMerge(out[k], v) : v;
+  }
+  return out;
+}
+
+/**
  * Resolve the binding of a client to an app-instance.
  *
  * @param {object} client
@@ -222,7 +261,7 @@ export function resolveApp({ app, devPort, overridable = false }) {
         `or, from that application's directory: kitebase dev`
     );
   }
-  const config = parse(readFileSync(configPath, 'utf8')) ?? {};
+  const config = readAppConfig(root);
   const api = config.api ?? {};
   if (givenRoot) app = config.name ?? app;
 
