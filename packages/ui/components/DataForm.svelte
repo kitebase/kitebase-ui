@@ -32,6 +32,7 @@
   import WidgetJson from './widgets/WidgetJson.svelte';
   import WidgetChecklist from './widgets/WidgetChecklist.svelte';
   import WidgetCodeSet from './widgets/WidgetCodeSet.svelte';
+  import WidgetRefSet from './widgets/WidgetRefSet.svelte';
   import WidgetMedia from './widgets/WidgetMedia.svelte';
   import WidgetFiles from './widgets/WidgetFiles.svelte';
   import PluginComponent from './PluginComponent.svelte';
@@ -1504,6 +1505,14 @@
       />
     {:else if widgetType === 'codeset'}
       <WidgetCodeSet
+        value={draft[field.name]}
+        onchange={(v) => patch(field.name, v)}
+        onblur={() => leaveField(field.name)}
+        readonly={fieldReadonly}
+        {field}
+      />
+    {:else if widgetType === 'refset'}
+      <WidgetRefSet
         value={draft[field.name]}
         onchange={(v) => patch(field.name, v)}
         onblur={() => leaveField(field.name)}

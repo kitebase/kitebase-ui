@@ -37,6 +37,8 @@ export const BASE_WIDGET_MAP: Record<string, string> = {
   // A type of the core: a list of codes from a vocabulary the field names
   // (`choices` or `choices_endpoint`)
   CodeSet:     'codeset',
+  // A junction the record reads as a value: the keys of a vocabulary, as badges
+  RefSet:      'refset',
 };
 
 export const BASE_FORMATTER_MAP: Record<string, string> = {
@@ -145,6 +147,9 @@ export interface TableColumnInfo {
   /** Where the column stands when a query is built (see dataview.fields.ts). */
   query_rank?: QueryRank;
   foreign_key?: { target: string; field: string };
+  /** A RefSet field: the vocabulary it holds keys of, and whether a missing
+   *  entry can be added by name (the server's resolver says so). */
+  ref_set?: { target: string; field: string; create?: boolean };
   /** A media column (kitebase.media): its kind, root and upload limits. */
   media?: 'image' | 'file' | 'files';
   root?: string;
