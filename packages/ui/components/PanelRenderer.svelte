@@ -28,6 +28,7 @@
    *   ["f1","f2"]  → pick named fields
    *   {t: "s", …}  → rename: $trigger.t = payload.s
    */
+  import { _ } from '../i18n';
   import SplitPane from './SplitPane.svelte';
   import ViewRenderer from './ViewRenderer.svelte';
   import PanelRenderer from './PanelRenderer.svelte'; // recursive sub-panels
@@ -60,9 +61,11 @@
     panel: Panel;
     focusRowId?: unknown;
     onEvent?: (area: string, name: string, data: unknown) => void;
+    /** Given by a page opened over another one: the header gets a ← back to it. */
+    onBack?: () => void;
   }
 
-  let { panel, focusRowId, onEvent: onExternalEvent }: PanelRendererProps = $props();
+  let { panel, focusRowId, onEvent: onExternalEvent, onBack }: PanelRendererProps = $props();
 
   const areas = $derived((panel.panels ?? []) as SplitArea[]);
 
@@ -126,9 +129,12 @@
 
 <div class="flex h-full flex-col">
 
-  {#if panel.title}
-    <div class="flex-shrink-0 border-b border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700">
-      {panel.title}
+  {#if panel.title || onBack}
+    <div class="kb-panel-header">
+      {#if onBack}
+        <button class="kb-panel-back" onclick={onBack} title={_('Back')} aria-label={_('Back')}>←</button>
+      {/if}
+      {#if panel.title}<span class="kb-panel-title">{panel.title}</span>{/if}
     </div>
   {/if}
 
@@ -231,3 +237,39 @@
   </div>
 
 </div>
+
+<style>
+  .kb-panel-header {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 1rem;
+    border-bottom: 1px solid var(--kb-border);
+    background: var(--kb-surface);
+  }
+  .kb-panel-back {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    margin-left: -0.5rem;
+    border: none;
+    border-radius: 0.25rem;
+    background: none;
+    color: var(--kb-text-subtle);
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .kb-panel-back:hover {
+    background: var(--kb-surface-hover);
+    color: var(--kb-text);
+  }
+  .kb-panel-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--kb-text);
+  }
+</style>

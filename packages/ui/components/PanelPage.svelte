@@ -6,8 +6,9 @@
    * the missing link between a menu leaf's `action: stack_push, panel: <id>` and
    * the Stack, which only knows how to push resolved components (docs/pending/menu.md §5).
    */
-  import { setContext } from 'svelte';
+  import { getContext, setContext } from 'svelte';
   import { api } from '$kitebase/api/client';
+  import { stack as globalStack, type StackInstance } from '$kitebase/stack/stack.svelte';
   import PanelRenderer from './PanelRenderer.svelte';
 
   interface Props {
@@ -21,6 +22,11 @@
   // for one id: the stack and the home key it by the id they show.
   // svelte-ignore state_referenced_locally
   setContext('kb:page', panelId);
+
+  // A page opened over another one has a way back to it, as a form has; one a
+  // menu opens is the bottom of its stack, and has nowhere to go back to.
+  const stack = getContext<StackInstance>('kb:stack') ?? globalStack;
+  const overAnother = stack.length > 1;
 
   let panel = $state<Record<string, unknown> | null>(null);
   let error = $state<string | null>(null);
@@ -74,6 +80,6 @@
       </div>
     </div>
   {:else if panel}
-    <PanelRenderer {panel} />
+    <PanelRenderer {panel} onBack={overAnother ? () => stack.pop() : undefined} />
   {/if}
 </div>
