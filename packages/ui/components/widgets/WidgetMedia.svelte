@@ -14,6 +14,7 @@
   import type { FormField } from '../dataform.types';
   import type { TableColumnInfo } from '../../api/serverConfig.svelte';
   import { api } from '../../api/client';
+  import { errorText } from '$kitebase/api/envelope';
   import { isMediaRef, mediaFileName, mediaUrl } from '../../api/media';
   import { _, _t } from '../../i18n';
   import { acceptAttr, prepareImage, sizeText } from './media';
@@ -69,7 +70,7 @@
         uploaded = res.data;
         onchange(res.data.ref);
       } else {
-        error = res.message ?? _('Upload failed');
+        error = errorText(res, _('Upload failed'));
       }
     } finally {
       busy = false;

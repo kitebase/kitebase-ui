@@ -9,6 +9,7 @@
  */
 import { _ } from '../../i18n';
 import { api } from '$kitebase/api/client';
+import { errorText } from '$kitebase/api/envelope';
 
 export interface CodeChoice {
   value: string;
@@ -19,7 +20,7 @@ export interface CodeChoice {
 
 export async function fetchChoices(endpoint: string): Promise<CodeChoice[]> {
   const res = await api.endpoint(endpoint, {});
-  if (res.status !== 'success') throw new Error(res.message ?? _('The choices could not be loaded'));
+  if (res.status !== 'success') throw new Error(errorText(res, _('The choices could not be loaded')));
   return res.data as CodeChoice[];
 }
 

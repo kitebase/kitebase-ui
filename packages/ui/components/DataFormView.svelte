@@ -23,6 +23,7 @@
   import { stack as globalStack } from '$kitebase/stack/stack.svelte';
   import type { StackInstance } from '$kitebase/stack/stack.svelte';
   import { api } from '$kitebase/api/client';
+  import { errorText } from '$kitebase/api/envelope';
   import DataForm from './DataForm.svelte';
   import { callJudged, presentOutcome, FlowCancelled, FlowRefused } from './flow';
   import { applyResult } from './resultAction';
@@ -105,7 +106,7 @@
           _cache.set(formId, fd);
           descriptor = fd;
         } else {
-          loadError = res.message ?? `Cannot load form ${formId}`;
+          loadError = errorText(res, `Cannot load form ${formId}`);
           return;
         }
       } catch (e) {
@@ -152,7 +153,7 @@
       if (res.status === 'success') {
         aggregate = loadedAggregate(formId, res.data as TreeNode);
       } else {
-        loadError = res.message ?? `Cannot load record ${recordId}`;
+        loadError = errorText(res, `Cannot load record ${recordId}`);
       }
     } catch (e) {
       loadError = e instanceof Error ? e.message : String(e);
@@ -188,7 +189,7 @@
     // Judged: the rules of the root's table may ask before anything is written
     const res = await callJudged('save_tree', serialize(agg), title);
     if (res.cancelled) throw new FlowCancelled();
-    if (res.status !== 'success') throw new FlowRefused(res.message ?? _('Error saving'), res.flow?.patch);
+    if (res.status !== 'success') throw new FlowRefused(errorText(res, _('Error saving')), res.flow?.patch);
 
     // Re-read from the answer: the database holds defaults and stamps the buffer
     // never saw, and the temporary ids are keys now.

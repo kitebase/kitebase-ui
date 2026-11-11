@@ -121,6 +121,7 @@ registerTranslations('it', {
   'Search…':                  'Cerca…',
   'Searching…':               'Ricerca…',
   'No results':               'Nessun risultato',
+  'The search failed':        'La ricerca non è riuscita',
   'Search more…':             'Cerca altro…',
   'Type to add…':             'Scrivi per aggiungere…',
   'Add "{name}"':             'Aggiungi "{name}"',

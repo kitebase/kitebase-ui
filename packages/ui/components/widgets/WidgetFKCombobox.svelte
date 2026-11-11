@@ -13,6 +13,7 @@
   import { untrack, getContext } from 'svelte';
   import { _ } from '../../i18n';
   import { api } from '$kitebase/api/client';
+  import { errorText } from '$kitebase/api/envelope';
   import { serverConfig } from '$kitebase/api/serverConfig.svelte';
   import { stack as globalStack } from '$kitebase/stack/stack.svelte';
   import type { StackInstance } from '$kitebase/stack/stack.svelte';
@@ -56,6 +57,8 @@
   let options      = $state<Array<{ id: unknown; label: string }>>([]);
   let open         = $state(false);
   let searching    = $state(false);
+  // A search the server refused: said in the list, never read as "no results"
+  let searchError  = $state<string | null>(null);
   // -1 = none; 0..options.length-1 = option; options.length = "Search more…"
   let highlighted  = $state(-1);
   let inputEl      = $state<HTMLInputElement | undefined>();
@@ -137,6 +140,7 @@
     if (!fkTarget || !df || !searchable) return;
 
     searching = true;
+    searchError = null;
     try {
       const res = await api.endpoint('query', {
         format: 'records',
@@ -155,6 +159,9 @@
           const row = r as Record<string, unknown>;
           return { id: row[fkPkField], label: String(row[df] ?? '') };
         });
+      } else {
+        searchError = errorText(res, _('The search failed'));
+        options = [];
       }
     } finally {
       searching = false;
@@ -371,6 +378,8 @@
         <ul bind:this={listEl} class="max-h-48 overflow-auto py-1" role="listbox">
           {#if searching}
             <li class="px-3 py-2 text-sm" style="color: var(--kb-text-subtle)">{_('Searching…')}</li>
+          {:else if searchError}
+            <li class="px-3 py-2 text-sm text-danger">{searchError}</li>
           {:else if options.length === 0 && query.trim()}
             <li class="px-3 py-2 text-sm" style="color: var(--kb-text-subtle)">{_('No results')}</li>
           {:else}

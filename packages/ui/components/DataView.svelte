@@ -28,6 +28,7 @@
   import { callJudged, presentOutcome } from './flow';
   import type { ColumnDef } from '$kitebase/tabulator/KitebaseTable';
   import { api } from '$kitebase/api/client';
+  import { errorText } from '$kitebase/api/envelope';
   import { serverConfig, resolveFormatter as resolveFormatterByType, resolveAlign } from '$kitebase/api/serverConfig.svelte';
   import type { SchemaFieldInfo } from '$kitebase/api/serverConfig.svelte';
   import { resolveFormatter } from '$kitebase/formatters/registry';
@@ -333,13 +334,13 @@
     }
     const up = await api.upload(target.model, target.field, id as string | number, ready, file.name);
     if (up.status !== 'success' || !up.data) {
-      await msgbox.error(up.message ?? _('Upload failed'));
+      await msgbox.error(errorText(up, _('Upload failed')));
       return;
     }
     const res = await api.endpoint('db', { table: target.model, method: 'update', id,
                                            data: { [target.field]: up.data.ref } });
     if (res.status !== 'success') {
-      await msgbox.error(res.message ?? _('Error saving'));
+      await msgbox.error(errorText(res, _('Error saving')));
       return;
     }
     await refreshRows([id]);
@@ -611,7 +612,7 @@
             rows = data;
             _inferColumnTypes(rows);
           } else {
-            error = res.message ?? 'Query failed';
+            error = errorText(res, 'Query failed');
             rows = [];
           }
         } else {
@@ -624,7 +625,7 @@
             _inferColumnTypes(rows);
             totalCount = d.total ?? null;
           } else {
-            error = res.message ?? 'Query failed';
+            error = errorText(res, 'Query failed');
             rows = [];
           }
         }
@@ -654,7 +655,7 @@
             _inferColumnTypes(rows);
           }
         } else {
-          error = res.message ?? 'Endpoint call failed';
+          error = errorText(res, 'Endpoint call failed');
           rows = [];
         }
       } catch (e) {
@@ -689,11 +690,11 @@
           await tableRef.addRows(newData);
           syncCards();
         }
+      } else {
+        // The rows already loaded stay, but a "Load all" that does nothing
+        // must say why: it was asked for
+        await applyResult(res, { title: _('Load more'), stack });
       }
-    } catch (e) {
-      // Non-fatal — the rows already loaded stay — but never silent: a
-      // "Load all" that does nothing must leave a trace somewhere.
-      console.error('[DataView] load more failed', e);
     } finally {
       loadingMore = false;
       saveViewState();
@@ -1165,7 +1166,7 @@
         await refreshRows([id]);
         await presentOutcome(res.flow, { stack, title: _('Delete') });
       } else {
-        msgbox.error(res.message ?? _('Error deleting record'));
+        msgbox.error(errorText(res, _('Error deleting record')));
       }
     } catch (e) {
       msgbox.error(e instanceof Error ? e.message : String(e));

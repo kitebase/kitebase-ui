@@ -19,3 +19,13 @@ export function errorOf<T = unknown>(body: unknown, fallback?: string): APIRespo
     flow: d['$flow'],
   };
 }
+
+/**
+ * An error as a line to show: the message, and the start of the request id
+ * when the server gave one, so whoever reads it can find the line in the
+ * server's log. The same text in a dialog and in a page.
+ */
+export function errorText(res: { message?: unknown; request_id?: unknown }, fallback: string): string {
+  const message = typeof res.message === 'string' && res.message ? res.message : fallback;
+  return typeof res.request_id === 'string' ? `${message} [${res.request_id.slice(0, 8)}]` : message;
+}

@@ -16,6 +16,7 @@
   import { filesSource } from '../../api/filesSource';
   import { mediaUrl } from '../../api/media';
   import { _, _t } from '../../i18n';
+  import { errorText } from '$kitebase/api/envelope';
   import { acceptAttr, sizeText } from './media';
   import { viewerOf, type Viewer } from './viewers';
   import { File as FileIcon, FileArchive, FileImage, FileSpreadsheet, FileText, X } from '@lucide/svelte';
@@ -67,7 +68,7 @@
       const res = await s.list();
       if (s !== source) return;               // the record changed meanwhile
       if (res.status === 'success') entries = res.data ?? [];
-      else error = res.message ?? _('Error loading');
+      else error = errorText(res, _('Error loading'));
     } finally {
       loading = false;
     }
@@ -98,7 +99,7 @@
             const added = res.data;
             entries = [...entries.filter((e) => e.key !== added.key), added].sort(byName);
           } else if (res.status !== 'success') {
-            const why = res.message ?? _('Upload failed');
+            const why = errorText(res, _('Upload failed'));
             refused.push(why.includes(file.name) ? why : `${file.name}: ${why}`);
           }
         } finally {
@@ -134,7 +135,7 @@
     if (res.status === 'success') {
       entries = entries.map((e) => (e.key === entry.key ? { ...e, description: text } : e));
     } else {
-      error = res.message ?? _('Error saving');
+      error = errorText(res, _('Error saving'));
     }
   }
 
@@ -147,7 +148,7 @@
       entries = entries.filter((e) => e.key !== entry.key);
       notice = _t('{name} moved to the trash', { name: entry.name });
     } else {
-      error = res.message ?? _('Error saving');
+      error = errorText(res, _('Error saving'));
     }
   }
 

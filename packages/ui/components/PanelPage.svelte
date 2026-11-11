@@ -8,6 +8,7 @@
    */
   import { getContext, setContext } from 'svelte';
   import { api } from '$kitebase/api/client';
+  import { errorText } from '$kitebase/api/envelope';
   import { stack as globalStack, type StackInstance } from '$kitebase/stack/stack.svelte';
   import PanelRenderer from './PanelRenderer.svelte';
 
@@ -41,7 +42,7 @@
       if (res.status === 'success') {
         panel = res.data as Record<string, unknown>;
       } else {
-        error = res.message ?? 'Unknown error';
+        error = errorText(res, 'Unknown error');
       }
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);

@@ -21,6 +21,7 @@
   import { Check, X, Loader } from '@lucide/svelte';
   import { getConfig } from '../config';
   import { api } from '../api/client';
+  import { errorText } from '$kitebase/api/envelope';
   import WidgetText from './widgets/WidgetText.svelte';
   import WidgetTextarea from './widgets/WidgetTextarea.svelte';
   import WidgetNumber from './widgets/WidgetNumber.svelte';
@@ -47,6 +48,7 @@
   import DataFormView from './DataFormView.svelte';
   import { msgbox } from './msgbox.svelte';
   import { callJudged, FlowCancelled, FlowRefused } from './flow';
+  import { applyResult } from './resultAction';
   import type { Flow } from '../api/types';
   import { resolveIcon } from './icons';
   import { stack as globalStack } from '$kitebase/stack/stack.svelte';
@@ -637,7 +639,7 @@
         errors = {};
         onEvent?.('form_load', { ...original });
       } else {
-        internalStatus = { message: res.message ?? _('Error loading data'), type: 'error' };
+        internalStatus = { message: errorText(res, _('Error loading data')), type: 'error' };
       }
     } finally {
       loading = false;
@@ -760,13 +762,16 @@
     internalStatus = undefined;
     try {
       const res = await api.endpoint(node.endpoint!, resolveRecordTokens(node.pass, draft));
-      if (res.status === 'success') {
+      const body = (res.data ?? {}) as Record<string, unknown>;
+      if (res.status === 'success' && !body.action && !body.detail) {
+        // A report in one line: the form's status line, not a box to close
         internalStatus = { message: res.message ?? _('Done'), type: 'success' };
       } else {
-        await msgbox.error(res.message ?? _('Error'));
+        // A refusal, or an answer that does more than report: the vocabulary of
+        // every other caller of an operation (resultAction.ts). No reload: the
+        // form may hold changes not saved yet.
+        await applyResult(res, { title: node.label, stack });
       }
-    } catch (e) {
-      await msgbox.error(e instanceof Error ? e.message : String(e));
     } finally {
       busyButton = null;
     }
@@ -841,7 +846,7 @@
         // Back where the problem is, when the judge says where
         const at = phases.findIndex((p) => p.id === res.flow?.phase);
         if (at >= 0 && at !== phaseIdx) await enterPhase(at);
-        internalStatus = { message: res.message ?? _('Error'), type: 'error' };
+        internalStatus = { message: errorText(res, _('Error')), type: 'error' };
         return false;
       }
       applyProposal(res.data);
@@ -955,14 +960,14 @@
           const elsewhere = Object.entries(errors).filter(([name]) => !shown.has(name));
           if (elsewhere.length > 0) {
             internalStatus = {
-              message: `${res.message ?? _('Error saving')}: `
+              message: `${errorText(res, _('Error saving'))}: `
                 + elsewhere.map(([name, msg]) => `${name}: ${msg}`).join('; '),
               type: 'error',
             };
           }
           focusFirstError();
         } else {
-          internalStatus = { message: res.message ?? _('Error saving'), type: 'error' };
+          internalStatus = { message: errorText(res, _('Error saving')), type: 'error' };
         }
         return;
       }

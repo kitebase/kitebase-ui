@@ -40,6 +40,7 @@
  * knowing what any entry does.
  */
 import { api } from '../api/client';
+import { errorText } from '../api/envelope';
 import { msgbox } from './msgbox.svelte';
 import { _ } from '../i18n';
 import PanelPage from './PanelPage.svelte';
@@ -73,9 +74,8 @@ export async function applyResult(response: unknown, ctx: ResultContext): Promis
   if (payload.status === 'error') {
     // The id is the line in the server's log: what a person reports, and
     // what turns "it failed" into something that can be looked up.
-    const id = typeof payload.request_id === 'string' ? ` [${payload.request_id.slice(0, 8)}]` : '';
     await msgbox.error(
-      ((payload.message as string) ?? _('The operation failed')) + id,
+      errorText(payload, _('The operation failed')),
       (((payload.data ?? {}) as Payload).detail as string | undefined)
         ?? (payload.traceback as string | undefined),
       ctx.title,

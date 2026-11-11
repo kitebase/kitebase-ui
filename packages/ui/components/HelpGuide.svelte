@@ -1,5 +1,6 @@
 <script lang="ts">
   import { api } from '$kitebase/api/client';
+  import { errorText } from '$kitebase/api/envelope';
   import { _ } from '../i18n';
   import SheetDialog from './SheetDialog.svelte';
   import { onMount } from 'svelte';
@@ -38,7 +39,7 @@
         const shown = res.data as Shown;
         history = replace ? [shown] : [...history, shown];
       } else {
-        error = res.message ?? _('The guide could not be opened');
+        error = errorText(res, _('The guide could not be opened'));
       }
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
@@ -98,7 +99,7 @@
     fetching = true;
     try {
       const res = await api.download('help_manual');
-      if (res.status !== 'success') error = res.message ?? _('The manual could not be opened');
+      if (res.status !== 'success') error = errorText(res, _('The manual could not be opened'));
     } finally {
       fetching = false;
     }

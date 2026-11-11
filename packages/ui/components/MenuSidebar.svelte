@@ -8,6 +8,7 @@
    * whatever was open before.
    */
   import { api } from '$kitebase/api/client';
+  import { errorText } from '$kitebase/api/envelope';
   import { getContext } from 'svelte';
   import { stack as globalStack, type StackInstance } from '$kitebase/stack/stack.svelte';
   import PanelPage from './PanelPage.svelte';
@@ -65,7 +66,7 @@
         home.page = data.home_page ?? null;
         expanded = new Set(collectGroupIds(items));
       } else {
-        error = res.message ?? 'Unknown error';
+        error = errorText(res, 'Unknown error');
       }
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);

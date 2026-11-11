@@ -17,6 +17,7 @@
   import { SvelteMap, SvelteSet } from 'svelte/reactivity';
   import { _, _t } from '../../i18n';
   import { api } from '$kitebase/api/client';
+  import { errorText } from '$kitebase/api/envelope';
   import { serverConfig } from '$kitebase/api/serverConfig.svelte';
   import { refsetName, rememberNames } from '../../formatters/refset';
   import type { FormField } from '../dataform.types';
@@ -48,6 +49,8 @@
   let options = $state<Array<{ key: unknown; label: string }>>([]);
   let open = $state(false);
   let searching = $state(false);
+  // A search the server refused: said in the list, never read as "no results"
+  let searchError = $state<string | null>(null);
   let highlighted = $state(-1);
   let inputEl = $state<HTMLInputElement | undefined>();
 
@@ -112,6 +115,7 @@
     const pk = keyField;
     if (!tbl || !df) return;
     searching = true;
+    searchError = null;
     try {
       const res = await api.endpoint('query', {
         format: 'records',
@@ -131,6 +135,10 @@
         highlighted = options.length ? 0 : -1;
         for (const o of options) labels.set(keyOf(o.key), o.label);
         rememberNames(tbl, options.map((o) => [o.key, o.label]));
+      } else {
+        searchError = errorText(res, _('The search failed'));
+        options = [];
+        highlighted = -1;
       }
     } finally {
       searching = false;
@@ -143,7 +151,8 @@
   // listed, chosen or found already has that name.
   const offerNew = $derived.by(() => {
     const q = fold(query);
-    if (!ref.create || !q) return false;
+    // What could not be read may exist: adding it would make a duplicate
+    if (!ref.create || !q || searchError) return false;
     if (options.some((o) => fold(o.label) === q)) return false;
     return !items.some((v) => fold(labelOf(v)) === q);
   });
@@ -302,6 +311,8 @@
                 onclick={() => takeNew(query)}>
               {_t('Add "{name}"', { name: query.trim() })}
             </li>
+          {:else if searchError}
+            <li class="kb-refset-note" style="color: var(--kb-danger)">{searchError}</li>
           {:else if !searching && !options.length}
             <li class="kb-refset-note">{_('No results')}</li>
           {/if}
