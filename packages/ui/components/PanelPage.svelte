@@ -4,7 +4,7 @@
    *
    * Resolves a page id via `get_page` and renders it with PanelRenderer. This is
    * the missing link between a menu leaf's `action: stack_push, panel: <id>` and
-   * the Stack, which only knows how to push resolved components (docs/pending/menu.md §5).
+   * the Stack, which only knows how to push resolved components (kitebase PLUGIN_MODEL.md §9.4).
    */
   import { getContext, setContext } from 'svelte';
   import { api } from '$kitebase/api/client';

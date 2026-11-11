@@ -1,6 +1,6 @@
 <script lang="ts">
   /**
-   * MenuSidebar.svelte — sidebar-tree consuming `get_menu` (docs/pending/menu.md §9.5).
+   * MenuSidebar.svelte — sidebar-tree consuming `get_menu` (kitebase PLUGIN_MODEL.md §9.6).
    *
    * Renders the composed, filtered, ordered tree for one menu root and, on leaf
    * click, opens the target page via PanelPage. Sidebar clicks are a change of
@@ -89,7 +89,7 @@
 
   /**
    * `action: endpoint` — a menu item that DOES something instead of opening a
-   * page (menu.md §5). The client stays generic: it knows how to ask, how to
+   * page (kitebase PLUGIN_MODEL.md §9.4). The client stays generic: it knows how to ask, how to
    * confirm and what to do with an answer, and nothing about what the operation
    * means. `confirm` is a yes/no question and only that — an operation that
    * needs a *value* is a page, not a menu item that fires. What the answer
