@@ -200,7 +200,7 @@
         <li>✅ Solo Tailwind</li>
       </ul>
       <div class="flex flex-wrap gap-2">
-        {#each ['top', 'right', 'bottom', 'left'] as s}
+        {#each (['top', 'right', 'bottom', 'left'] as const) as s}
           <button
             onclick={() => { sheetSide = s; sheetOpen = true; }}
             class="rounded-md bg-purple-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-700"
@@ -229,7 +229,7 @@
         <li>✅ Solo bits-ui</li>
       </ul>
       <div class="flex flex-wrap gap-2">
-        {#each ['top', 'right', 'bottom', 'left'] as s}
+        {#each (['top', 'right', 'bottom', 'left'] as const) as s}
           <button
             onclick={() => { sheetDialogSide = s; sheetDialogOpen = true; }}
             class="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"

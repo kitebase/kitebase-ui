@@ -12,9 +12,6 @@ export interface UserContext {
   // Operational ("working") date (YYYY-MM-DD), present only when the user chose
   // one via updateContext; absent = today (authStore.opDate).
   op_date?: string;
-  // Multi-tenancy (optional — only present when multi_tenant.enabled)
-  tenant_id?: number;
-  tenant_prefix?: string | null;
   // Arbitrary extra context — the backend merges any fields sent via update_context
   // into the JWT payload, so wizard state, UI preferences, etc. can be stored here.
   [key: string]: unknown;

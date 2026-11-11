@@ -153,7 +153,7 @@ class KitebaseAPI {
   }
 
   /**
-   * Switch context (e.g. change tenant).
+   * Change fields of the context (e.g. the operational date).
    * The server validates the request and returns a new JWT with updated payload.
    */
   async updateContext(context: ContextUpdate): Promise<AuthResponse> {

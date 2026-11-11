@@ -21,6 +21,7 @@
     ChevronDown, SquareCheckBig, Zap, ArrowUpDown,
     Table2, LayoutGrid, ListTree,
   } from '@lucide/svelte';
+  import { untrack } from 'svelte';
   import type { NavigatorConfig, CommandItem } from './dataview.types';
   import { commandLabel } from './dataview.types';
   import { visibleButtons } from './navigator.visibility';
@@ -177,8 +178,9 @@
   //
   // Escape and the × clear it and ask for the whole set back: one query, meant.
 
-  let searchText = $state(searchValue);
-  let emitted = searchValue;
+  // The box starts from the value in force; the effect below keeps following it.
+  let searchText = $state(untrack(() => searchValue));
+  let emitted = untrack(() => searchValue);
 
   // Follow the value from outside (a restored view, a reset) without undoing
   // what the user is typing: only a value we did not send ourselves wins.

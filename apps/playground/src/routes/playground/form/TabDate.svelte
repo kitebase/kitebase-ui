@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { DatePicker, DateRangePicker } from 'bits-ui';
+  import { DatePicker, DateRangePicker, Portal } from 'bits-ui';
   import type { DateValue } from '@internationalized/date';
 
   let dataSemplice = $state<DateValue | undefined>(undefined);
@@ -202,7 +202,7 @@
         >📅</DateRangePicker.Trigger>
       </div>
 
-      <DateRangePicker.Portal>
+      <Portal>
         <DateRangePicker.Content class="z-50 mt-1 rounded-xl border border-gray-200 bg-white p-3 shadow-lg">
           <DateRangePicker.Calendar>
             {#snippet children({ months, weekdays })}
@@ -243,7 +243,7 @@
             {/snippet}
           </DateRangePicker.Calendar>
         </DateRangePicker.Content>
-      </DateRangePicker.Portal>
+      </Portal>
     </DateRangePicker.Root>
     {#if dataRange.start && dataRange.end}
       <p class="mt-1 text-xs text-gray-500">

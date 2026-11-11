@@ -44,10 +44,12 @@
                    data-[state=checked]:border-brand data-[state=checked]:bg-brand
                    focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-1"
           >
-            <RadioGroup.Indicator
-              class="flex h-full w-full items-center justify-center
-                     after:block after:h-1.5 after:w-1.5 after:rounded-full after:bg-white"
-            />
+            {#snippet children({ checked })}
+              {#if checked}
+                <span class="flex h-full w-full items-center justify-center
+                             after:block after:h-1.5 after:w-1.5 after:rounded-full after:bg-white"></span>
+              {/if}
+            {/snippet}
           </RadioGroup.Item>
           <label for="radio-{opt.value}" class="cursor-pointer">
             <span class="block text-sm font-medium text-gray-800">{opt.label}</span>

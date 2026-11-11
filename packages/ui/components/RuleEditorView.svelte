@@ -15,7 +15,7 @@
    * Edits are local until Apply: opening the editor is a deliberate act, and so
    * is changing the set one is looking at.
    */
-  import { getContext } from 'svelte';
+  import { getContext, untrack } from 'svelte';
   import { ArrowLeft, Check, Plus, CopyPlus, X, Search, ArrowUpDown, Eraser } from '@lucide/svelte';
   import { _, _t } from '../i18n';
   import { stack as globalStack } from '$kitebase/stack/stack.svelte';
@@ -80,10 +80,12 @@
     return src.map(r => ({ join: r.join, rule: { ...r.rule } }));
   }
 
-  let rows = $state<RuleRow[]>(cloneRows(rules));
-  let orderField = $state(order[0]?.field ?? '');
-  let orderDir = $state<'asc' | 'desc'>(order[0]?.dir ?? 'asc');
-  let searchText = $state(search);
+  // A draft of what is in force when the page opens: nothing reaches the view
+  // until Apply, so later changes to the props are not followed.
+  let rows = $state<RuleRow[]>(untrack(() => cloneRows(rules)));
+  let orderField = $state(untrack(() => order[0]?.field ?? ''));
+  let orderDir = $state<'asc' | 'desc'>(untrack(() => order[0]?.dir ?? 'asc'));
+  let searchText = $state(untrack(() => search));
 
   // An editor that opens empty offers a row to fill: an empty row is a switched
   // off condition, which is the selection mask every gestionale has — ten fields

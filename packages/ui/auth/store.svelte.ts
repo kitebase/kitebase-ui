@@ -10,7 +10,7 @@
  *   authStore.checkAuth()           // restore the saved token only (playground)
  *   await authStore.login(creds)    // returns true on success
  *   authStore.logout()              // forget the token, stay here
- *   await authStore.updateContext({ tenant_prefix: 'test' })
+ *   await authStore.updateContext({ op_date: '2026-01-31' })
  *
  *   authStore.user                  // UserContext | null
  *   authStore.isAuthenticated       // boolean (derived)
@@ -166,7 +166,7 @@ class AuthStore {
   }
 
   /**
-   * Switch context (e.g. change tenant).
+   * Change fields of the context (e.g. the operational date).
    * Requests a new JWT from the server with the updated payload.
    */
   async updateContext(context: ContextUpdate): Promise<boolean> {

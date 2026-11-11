@@ -186,6 +186,7 @@
           <div class="relative min-w-0 flex-1">
             <Combobox.Root
               type="single"
+              inputValue={query}
               onValueChange={(v) => {
                 selected = persone.find((p) => String(p.id) === v) ?? null;
                 if (selected) query = selected.nome;
@@ -196,7 +197,6 @@
                 class="input pr-8"
                 placeholder="Cerca per nome, ruolo o reparto…"
                 oninput={(e) => (query = (e.target as HTMLInputElement).value)}
-                value={selected ? selected.nome : query}
               />
               <Combobox.Trigger
                 class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
