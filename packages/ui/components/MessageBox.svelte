@@ -78,7 +78,9 @@
               </Dialog.Title>
             {/if}
             {#if active.message}
-              <Dialog.Description class="mt-0.5 text-sm text-gray-600">
+              <!-- pre-line: a message of several lines (the outcome of an operation,
+                   one line each) keeps its line breaks -->
+              <Dialog.Description class="mt-0.5 whitespace-pre-line text-sm text-gray-600">
                 {active.message}
               </Dialog.Description>
             {/if}
