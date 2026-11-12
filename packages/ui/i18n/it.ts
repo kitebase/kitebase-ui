@@ -62,6 +62,15 @@ registerTranslations('it', {
   'Keep editing':             'Continua a modificare',
 
   // form buttons
+  // The markdown editor
+  'Bold':                     'Grassetto',
+  'Italic':                   'Corsivo',
+  'Heading':                  'Titolo',
+  'List':                     'Elenco',
+  'Numbered list':            'Elenco numerato',
+  'Link':                     'Collegamento',
+  'Insert field':             'Inserisci campo',
+  'Markdown source':          'Sorgente markdown',
   'Save':                     'Salva',
   'Save (F12 or Ctrl+Enter)': 'Salva (F12 o Ctrl+Enter)',
   // An intermediate frame confirms into the buffer; only the root saves.

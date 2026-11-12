@@ -13,6 +13,7 @@
   import { Markdown } from '@tiptap/markdown';
   import { Bold, Braces, FileCode, Heading2 as Heading, Italic, Link as LinkIcon, List,
            ListOrdered } from '@lucide/svelte';
+  import { _ } from '../../i18n';
   import { Placeholders } from './placeholder';
 
   interface Placeholder {
@@ -128,24 +129,24 @@
 <div class="kb-md" class:kb-md-error={!!field?.error} class:kb-md-readonly={readonly}>
   {#if !readonly}
     <div class="kb-md-toolbar" role="toolbar" aria-label={field?.label ?? field?.name}>
-      <button type="button" title="Bold" disabled={source} class:on={active('bold')}
+      <button type="button" title={_('Bold')} disabled={source} class:on={active('bold')}
               onclick={() => run((c) => c.toggleBold())}><Bold size={16} /></button>
-      <button type="button" title="Italic" disabled={source} class:on={active('italic')}
+      <button type="button" title={_('Italic')} disabled={source} class:on={active('italic')}
               onclick={() => run((c) => c.toggleItalic())}><Italic size={16} /></button>
-      <button type="button" title="Heading" disabled={source} class:on={active('heading', { level: 2 })}
+      <button type="button" title={_('Heading')} disabled={source} class:on={active('heading', { level: 2 })}
               onclick={() => run((c) => c.toggleHeading({ level: 2 }))}><Heading size={16} /></button>
-      <button type="button" title="List" disabled={source} class:on={active('bulletList')}
+      <button type="button" title={_('List')} disabled={source} class:on={active('bulletList')}
               onclick={() => run((c) => c.toggleBulletList())}><List size={16} /></button>
-      <button type="button" title="Numbered list" disabled={source} class:on={active('orderedList')}
+      <button type="button" title={_('Numbered list')} disabled={source} class:on={active('orderedList')}
               onclick={() => run((c) => c.toggleOrderedList())}><ListOrdered size={16} /></button>
-      <button type="button" title="Link" disabled={source} class:on={active('link')}
+      <button type="button" title={_('Link')} disabled={source} class:on={active('link')}
               onclick={openLink}><LinkIcon size={16} /></button>
       {#if placeholders.length}
-        <button type="button" title="Insert field" class:on={pickerOpen}
+        <button type="button" title={_('Insert field')} class:on={pickerOpen}
                 onclick={() => (pickerOpen = !pickerOpen)}><Braces size={16} /></button>
       {/if}
       <span class="kb-md-spacer"></span>
-      <button type="button" title="Markdown source" class:on={source}
+      <button type="button" title={_('Markdown source')} class:on={source}
               onclick={toggleSource}><FileCode size={16} /></button>
     </div>
     {#if linkOpen}

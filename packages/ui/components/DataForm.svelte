@@ -24,6 +24,7 @@
   import { errorText } from '$kitebase/api/envelope';
   import WidgetText from './widgets/WidgetText.svelte';
   import WidgetTextarea from './widgets/WidgetTextarea.svelte';
+  import WidgetMarkdown from './widgets/WidgetMarkdown.svelte';
   import WidgetNumber from './widgets/WidgetNumber.svelte';
   import { numberShape, numberWidthCh } from './widgets/number';
   import WidgetDate from './widgets/WidgetDate.svelte';
@@ -1396,6 +1397,14 @@
       />
     {:else if widgetType === 'textarea'}
       <WidgetTextarea
+        value={draft[field.name]}
+        onchange={(v) => patch(field.name, v)}
+        onblur={() => leaveField(field.name)}
+        readonly={fieldReadonly}
+        {field}
+      />
+    {:else if widgetType === 'markdown'}
+      <WidgetMarkdown
         value={draft[field.name]}
         onchange={(v) => patch(field.name, v)}
         onblur={() => leaveField(field.name)}

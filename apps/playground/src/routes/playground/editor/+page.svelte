@@ -1,5 +1,5 @@
 <script lang="ts">
-  import MarkdownEditor from '#lib/editor/MarkdownEditor.svelte';
+  import MarkdownEditor from '$kitebase/components/editor/MarkdownEditor.svelte';
 
   const placeholders = [
     { name: 'partner.name', label: 'Partner' },

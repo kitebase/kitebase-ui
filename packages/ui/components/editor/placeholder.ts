@@ -1,13 +1,13 @@
 /**
- * Placeholders of a mail template, `[[partner.name]]` or `[[$note]]`, in the
+ * Placeholders of a template, `[[partner.name]]` or `[[$note]]`, in the
  * editor: plain text, shown as a token. Being text, a placeholder takes bold
  * or italic like the words around it, and is copied and pasted as it reads.
  *
  * Two things make it work. A decoration marks every `[[...]]` of the document
  * with the class `kb-placeholder`, recomputed on each change. And the markdown
  * the editor writes leaves placeholders as they are: the serializer escapes
- * `[`, `]` and `_` in text, which would turn `[[partner_id]]` into
- * `\[\[partner\_id\]\]`, a text the server no longer recognises.
+ * `[`, `]` and `_` in text, and `\[\[partner\_id\]\]` is not a placeholder
+ * for the server.
  */
 import { Extension } from '@tiptap/core';
 import type { MarkdownManager } from '@tiptap/markdown';
@@ -15,7 +15,7 @@ import type { Node as PMNode } from '@tiptap/pm/model';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 
-/** The grammar of the server (smtp/templates.py), as a source to build from. */
+/** The grammar the server fills (the smtp plugin's templates.py). */
 const NAME = String.raw`\[\[\s*\$?[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*\s*\]\]`;
 
 /** Every placeholder of a text. */
