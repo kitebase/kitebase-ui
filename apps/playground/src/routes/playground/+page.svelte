@@ -10,6 +10,7 @@
     { href: '/playground/dialogs', label: 'Dialogs (bits-ui)' },
     { href: '/playground/split', label: 'SplitPane' },
     { href: '/playground/editor', label: 'MarkdownEditor (Tiptap)' },
+    { href: '/playground/mail-compose', label: 'Compose email: variants' },
     { href: '/playground/types', label: 'Type Schema' },
     { href: '/playground/datatable', label: 'DataTable' },
     { href: '/playground/pages', label: 'Page Renderer' },
