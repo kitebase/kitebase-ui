@@ -237,6 +237,14 @@
     padding: 0.15rem 0.75rem;
   }
 
+  /* The check of the selection column, in a column 44px wide: the padding of a
+     title would leave it no room, and the ellipsis of a title would draw "..."
+     beside it */
+  :global(.tabulator-col.kb-col-select .tabulator-col-title) {
+    padding: 0.15rem 0;
+    text-overflow: clip;
+  }
+
   :global(.tabulator-col.tabulator-sortable .tabulator-col-title:hover) {
     color: var(--kb-text);
   }
