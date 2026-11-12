@@ -4,6 +4,7 @@
   import { Combobox } from 'bits-ui';
   import type { FormField, FormFieldChoice } from '../dataform.types';
   import { popupKeys } from './widget.svelte';
+  import { fetchChoices } from './choices';
 
   interface Props {
     value: unknown;                      // raw stored value (e.g. FK id, choice value)
@@ -17,7 +18,24 @@
 
   let open = $state(false);
 
-  let choices = $derived((field.choices ?? []) as FormFieldChoice[]);
+  // Given with the field, or served by `choices_endpoint`, fetched once per form
+  const endpoint = $derived(field.choices_endpoint as string | undefined);
+  let fetched = $state<FormFieldChoice[] | null>(null);
+
+  $effect(() => {
+    const name = endpoint;
+    if (!name) return;
+    untrack(async () => {
+      try {
+        fetched = (await fetchChoices(name)) as FormFieldChoice[];
+      } catch {
+        fetched = [];
+      }
+    });
+  });
+
+  let choices = $derived(
+    (endpoint ? (fetched ?? []) : (field.choices ?? [])) as FormFieldChoice[]);
 
   // Label matching the current value
   let selectedLabel = $derived(

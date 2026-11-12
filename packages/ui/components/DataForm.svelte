@@ -209,13 +209,14 @@
   let _seenRecordId: typeof recordId = undefined as any;
   let _neverLoaded = true;
 
-  // Local mode (Step A): capture data at mount via untrack.
+  // Local mode (Step A): capture at mount via untrack the values the form is
+  // handed — `defaults` (a draft the server prepared, open_form) under `data`.
   // Async modes (B/C): start empty — loadData() fills original/draft.
   let original = $state<Record<string, unknown>>(
-    isAsyncMode ? {} : untrack(() => ({ ...data }))
+    isAsyncMode ? {} : untrack(() => ({ ...(defaults ?? {}), ...data }))
   );
   let draft = $state<Record<string, unknown>>(
-    isAsyncMode ? {} : untrack(() => ({ ...data }))
+    isAsyncMode ? {} : untrack(() => ({ ...(defaults ?? {}), ...data }))
   );
   let errors = $state<Record<string, string>>({});
   let saving = $state(false);
