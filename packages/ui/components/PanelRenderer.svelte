@@ -63,9 +63,14 @@
     onEvent?: (area: string, name: string, data: unknown) => void;
     /** Given by a page opened over another one: the header gets a ← back to it. */
     onBack?: () => void;
+    /**
+     * What opened the page handed it (the `props` of a stack_push): the trigger
+     * of the main content, which its source reads as `$trigger.<name>`.
+     */
+    trigger?: Record<string, unknown>;
   }
 
-  let { panel, focusRowId, onEvent: onExternalEvent, onBack }: PanelRendererProps = $props();
+  let { panel, focusRowId, onEvent: onExternalEvent, onBack, trigger }: PanelRendererProps = $props();
 
   const areas = $derived((panel.panels ?? []) as SplitArea[]);
 
@@ -162,6 +167,7 @@
             <ViewRenderer
               view={panel.content}
               {focusRowId}
+              {trigger}
               onEvent={(n, d) => handleAreaEvent('content', n, d)}
             />
           {/if}

@@ -14,9 +14,12 @@
 
   interface Props {
     panelId: string;
+    /** The rest: what opened the page handed it, the trigger of its content. */
+    [prop: string]: unknown;
   }
 
-  let { panelId }: Props = $props();
+  let { panelId, ...props }: Props = $props();
+  const trigger = $derived(Object.keys(props).length > 0 ? props : undefined);
 
   // What the views inside know about where they are: their remembered state
   // is per page, not per table (DataView, getStateKey). A page component lives
@@ -81,6 +84,6 @@
       </div>
     </div>
   {:else if panel}
-    <PanelRenderer {panel} onBack={overAnother ? () => stack.pop() : undefined} />
+    <PanelRenderer {panel} {trigger} onBack={overAnother ? () => stack.pop() : undefined} />
   {/if}
 </div>
