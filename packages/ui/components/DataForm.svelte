@@ -64,7 +64,7 @@
   import type {
     FormDescriptor, FormField, FormStatus, FormPhase,
     LayoutNode, SectionNode, SectionField, FillerField, ColumnDef,
-    LabelNode, TabsNode, RowNode, CollectionNode, ButtonNode,
+    LabelNode, TabsNode, RowNode, CollectionNode, ButtonNode, PluginNode,
   } from './dataform.types';
 
   // ── Props ──────────────────────────────────────────────────────────────────
@@ -1600,6 +1600,17 @@
           readonly={!isEditable}
           fallbackLabel={groupLabel}
           onCommand={async (endpoint, scope, title) => { await runProposal(endpoint, scope, title); }}
+        />
+      {/if}
+    {:else if node.type === 'plugin'}
+      {#if pluginLoader}
+        <PluginComponent
+          loader={pluginLoader}
+          componentId={(node as PluginNode).component}
+          {...((node as PluginNode).props ?? {})}
+          model={view.source?.model}
+          recordId={mediaRecordId}
+          record={draft}
         />
       {/if}
     {:else if node.type === 'button'}

@@ -220,8 +220,22 @@ export interface RowNode {
   children: ColNode[];
 }
 
+/**
+ * A plugin's component in the layout (`component: activities.timeline`), for
+ * what the record carries that is no field of it: its history, its files. It
+ * gets the table and the id the form is on (none on a new record, until the
+ * first save), the draft, and its own `props`.
+ */
+export interface PluginNode {
+  type: 'plugin';
+  id?: string;
+  component: string;
+  props?: Record<string, unknown>;
+}
+
 export type LayoutNode =
-  FormField | SectionNode | HrNode | LabelNode | TabsNode | RowNode | CollectionNode | ButtonNode;
+  FormField | SectionNode | HrNode | LabelNode | TabsNode | RowNode | CollectionNode | ButtonNode
+  | PluginNode;
 
 // ── Top-level descriptor ────────────────────────────────────────────────────
 

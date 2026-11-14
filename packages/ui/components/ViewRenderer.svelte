@@ -27,11 +27,14 @@
   />
 
 {:else if view.type === 'plugin'}
+  <!-- The component gets its `props` and, in a split area, the `trigger`
+       that area received: the record the content is on. -->
   {#if pluginLoader}
     <PluginComponent
       loader={pluginLoader}
       componentId={view.component as string}
       {...(view.props as Record<string, unknown> ?? {})}
+      {trigger}
     />
   {:else}
     <!-- No loader in context: say so rather than fail on it. -->

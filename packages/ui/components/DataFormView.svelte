@@ -25,6 +25,7 @@
   import { api } from '$kitebase/api/client';
   import { errorText } from '$kitebase/api/envelope';
   import DataForm from './DataForm.svelte';
+  import PanelRenderer from './PanelRenderer.svelte';
   import { callJudged, presentOutcome, FlowCancelled, FlowRefused } from './flow';
   import { applyResult } from './resultAction';
   import { resolveRecordTokens } from './record';
@@ -80,6 +81,8 @@
   } = $props();
 
   let descriptor = $state<FormDescriptor | null>(null);
+  /** The split areas the page declares beside its form: the record's history, say. */
+  let panels = $state<SplitArea[]>([]);
   let loadError  = $state<string | null>(null);
   /** The buffer, when this page is an aggregate. Null on a plain record form. */
   let aggregate  = $state<Aggregate | null>(null);
@@ -88,6 +91,8 @@
 
   // Descriptor cache — shared across all DataFormView instances in the session.
   const _cache = new Map<string, FormDescriptor>();
+  const _panels = new Map<string, SplitArea[]>();
+  type SplitArea = { id: string; [key: string]: unknown };
 
   async function loadDescriptor() {
     if (givenDescriptor) {
@@ -97,6 +102,7 @@
       return;
     } else if (_cache.has(formId)) {
       descriptor = _cache.get(formId)!;
+      panels = _panels.get(formId) ?? [];
     } else {
       try {
         const res = await api.endpoint('get_page', { id: formId });
@@ -104,7 +110,9 @@
           const page = res.data as Record<string, unknown>;
           const fd = (page.content ?? page) as FormDescriptor;
           _cache.set(formId, fd);
+          _panels.set(formId, (page.panels ?? []) as SplitArea[]);
           descriptor = fd;
+          panels = _panels.get(formId)!;
         } else {
           loadError = errorText(res, `Cannot load form ${formId}`);
           return;
@@ -250,20 +258,29 @@
     {#if loadError}
       <div class="kb-form-view-error">{loadError}</div>
     {:else if descriptor && (!isAggregate || aggregate)}
-      <DataForm
-        view={descriptor}
-        recordId={buffer ? (buffer.node.op === 'create' ? null : buffer.node.id) : recordId}
-        data={data ?? (buffer ? buffer.node.values : (aggregate ? aggregate.root.values : undefined))}
-        persist={!aggregate && !buffer}
-        buffer={aggregate ? { agg: aggregate, node: aggregate.root } : buffer}
-        hideFields={hideFields ?? []}
-        groupLabel={title || undefined}
-        submit={buffer ? 'confirm' : 'save'}
-        trapFocus
-        defaults={draft && !aggregate ? { ...(defaults ?? {}), ...(draft.values ?? {}) } : defaults}
-        onSave={handleSave}
-        onCancel={handleCancel}
-      />
+      {#snippet form(onEvent?: (name: string, data: unknown) => void)}
+        <DataForm
+          view={descriptor!}
+          recordId={buffer ? (buffer.node.op === 'create' ? null : buffer.node.id) : recordId}
+          data={data ?? (buffer ? buffer.node.values : (aggregate ? aggregate.root.values : undefined))}
+          persist={!aggregate && !buffer}
+          buffer={aggregate ? { agg: aggregate, node: aggregate.root } : buffer}
+          hideFields={hideFields ?? []}
+          groupLabel={title || undefined}
+          submit={buffer ? 'confirm' : 'save'}
+          trapFocus
+          defaults={draft && !aggregate ? { ...(defaults ?? {}), ...(draft.values ?? {}) } : defaults}
+          onSave={handleSave}
+          onCancel={handleCancel}
+          {onEvent}
+        />
+      {/snippet}
+      <!-- A row of someone else's buffer is a form alone: the areas are the page's -->
+      {#if panels.length && !buffer}
+        <PanelRenderer panel={{ panels }} storageKey={formId} main={form} />
+      {:else}
+        {@render form()}
+      {/if}
     {:else}
       <div class="kb-form-view-loading">
         <div class="kb-form-view-spinner" aria-hidden="true"></div>

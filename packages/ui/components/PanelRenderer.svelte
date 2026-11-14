@@ -28,6 +28,7 @@
    *   ["f1","f2"]  → pick named fields
    *   {t: "s", …}  → rename: $trigger.t = payload.s
    */
+  import type { Snippet } from 'svelte';
   import { _ } from '../i18n';
   import SplitPane from './SplitPane.svelte';
   import ViewRenderer from './ViewRenderer.svelte';
@@ -68,9 +69,21 @@
      * of the main content, which its source reads as `$trigger.<name>`.
      */
     trigger?: Record<string, unknown>;
+    /**
+     * The main content drawn by the caller instead of `panel.content`: a frame
+     * that owns its view (the record form a list opens) and still has the
+     * page's split areas. It gets the emitter its view sends events to.
+     */
+    main?: Snippet<[(name: string, data: unknown) => void]>;
+    /** Where the split sizes are remembered; the title if not given. */
+    storageKey?: string;
   }
 
-  let { panel, focusRowId, onEvent: onExternalEvent, onBack, trigger }: PanelRendererProps = $props();
+  let {
+    panel, focusRowId, onEvent: onExternalEvent, onBack, trigger, main, storageKey,
+  }: PanelRendererProps = $props();
+
+  const emitContent = (n: string, d: unknown) => handleAreaEvent('content', n, d);
 
   const areas = $derived((panel.panels ?? []) as SplitArea[]);
 
@@ -163,12 +176,14 @@
 
         <!-- Leaf: the actual panel content -->
         <div class="h-full overflow-hidden">
-          {#if panel.content}
+          {#if main}
+            {@render main(emitContent)}
+          {:else if panel.content}
             <ViewRenderer
               view={panel.content}
               {focusRowId}
               {trigger}
-              onEvent={(n, d) => handleAreaEvent('content', n, d)}
+              onEvent={emitContent}
             />
           {/if}
         </div>
@@ -188,7 +203,7 @@
           minSize={80}
           gutterSize={5}
           collapseTarget={isAfter ? 'b' : 'a'}
-          storageKey="panel-{panel.title ?? 'default'}.{head.id}"
+          storageKey="panel-{storageKey ?? panel.title ?? 'default'}.{head.id}"
           initialCollapsed={head.collapsed === true}
           onCollapse={(isCollapsed) => handleAreaCollapse(head.id, isCollapsed)}
         >
