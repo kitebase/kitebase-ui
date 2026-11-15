@@ -774,7 +774,9 @@
     const query = buildQuery(src, view.columns, trigger ?? {}, { ...queryExtras, pk: pkField });
     try {
       const res = await api.endpoint('export', { query, ids, columns });
-      await applyResult(res, { title, stack, setQueryParams, refreshRows, reload: reloadData });
+      await applyResult(res, { title, stack, setQueryParams, refreshRows, refreshActive,
+                               model: view.source?.model as string | undefined,
+                               reload: reloadData });
     } catch (e) {
       await msgbox.error(e instanceof Error ? e.message : String(e), undefined, title);
     }
@@ -1018,6 +1020,26 @@
     if (totalCount !== null) totalCount += delta;
     syncCards();
     if (focusId != null) queueMicrotask(() => tableRef?.focusRowById(focusId));
+    reannounceActive(byId);
+  }
+
+  /**
+   * What hangs on the row under the cursor (a split area) reads it again: the
+   * row, or what a save touched around it, may have changed while a frame was
+   * open over this list. Sent as a new object, so the areas see a new trigger.
+   */
+  function reannounceActive(fresh?: Map<unknown, Record<string, unknown>>) {
+    if (!_activeRowData) return;
+    const row = fresh?.get((_activeRowData as any)[pkField]);
+    if (row) _activeRowData = row;
+    onEvent?.('row_click', { ..._activeRowData });
+  }
+
+  /** The active row read again, after a frame that saved something else. */
+  function refreshActive() {
+    if (!_activeRowData) return;
+    if (view.source?.model) void refreshRows([(_activeRowData as any)[pkField]]);
+    else reannounceActive();
   }
 
   function handleNavAccept() {
@@ -1096,6 +1118,8 @@
         stack,
         setQueryParams,
         refreshRows,
+        refreshActive,
+        model: view.source?.model as string | undefined,
         reload: reloadData,
       });
     } catch (e) {

@@ -63,6 +63,10 @@ export interface ResultContext {
    * just those; without, the view reloads.
    */
   refreshRows?: (ids: unknown[]) => void | Promise<void>;
+  /** Where the view is: the row under the cursor read again, and announced. */
+  refreshActive?: () => void;
+  /** The table of the view's rows: a saved record of another is no row of it. */
+  model?: string;
   reload?: () => void;
 }
 
@@ -100,8 +104,13 @@ async function applyBody(body: Payload, ctx: ResultContext, fallback?: string): 
           formId: body.page,
           draft: body.draft,
           title: (body.title as string | undefined) ?? ctx.title,
-          onSaved: (saved: Payload) => {
-            if (saved.id != null && ctx.refreshRows) ctx.refreshRows([saved.id]);
+          // A record of the list's own table is one of its rows; anything else
+          // (a message sent, a record of another table) is not, and the list
+          // reads again the row it was opened from
+          onSaved: (saved: Payload, meta?: { model?: string }) => {
+            if (saved.id != null && ctx.refreshRows && meta?.model && meta.model === ctx.model) {
+              ctx.refreshRows([saved.id]);
+            } else if (ctx.refreshActive) ctx.refreshActive();
             else ctx.reload?.();
           },
         });

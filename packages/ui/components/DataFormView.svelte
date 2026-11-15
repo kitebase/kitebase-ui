@@ -16,7 +16,7 @@
    *   recordId    string|number|null  null = new record
    *   draft       DraftNode           a new aggregate with values and rows already in it
    *   title       string              shown in header bar
-   *   onSaved     (savedData) => void  called after successful save with merged record (before pop)
+   *   onSaved     (savedData, {model}) => void  called after successful save with merged record (before pop); `model` is the form's table, none for a form saved by an endpoint
    */
   import { getContext } from 'svelte';
   import { _ } from '../i18n';
@@ -76,7 +76,7 @@
     /** Fields the caller supplies, which this form must not draw (§17). */
     hideFields?: string[];
     title?: string;
-    onSaved?: (savedData: Record<string, unknown>) => void;
+    onSaved?: (savedData: Record<string, unknown>, meta: { model?: string }) => void;
     onCancel?: () => void;
   } = $props();
 
@@ -211,14 +211,14 @@
       // A confirm, not a save: the values stay in the node, and the row reaches
       // the database when the root of the aggregate is saved.
       setValues(buffer.node, savedData);
-      onSaved?.(savedData);
+      onSaved?.(savedData, { model: descriptor?.source?.model });
       stack.pop();
       return;
     }
     const mode = (aggregate ? aggregate.root.op === 'create' : recordId == null) ? 'insert' : 'update';
     let saved = savedData;
     if (aggregate) ({ values: saved, flow } = await saveAggregate(savedData));
-    onSaved?.(saved);
+    onSaved?.(saved, { model: descriptor?.source?.model });
     stack.pop();
     // What the rules answered once the record was saved, lines then actions;
     // then what this form does after a save of this mode
