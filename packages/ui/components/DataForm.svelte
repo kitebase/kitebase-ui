@@ -209,15 +209,24 @@
   let _seenRecordId: typeof recordId = undefined as any;
   let _neverLoaded = true;
 
+  // Tokens the client can resolve from context. Anything else is server
+  // territory and must be `deferred`. Declared before the local start, which
+  // resolves them at mount.
+  const CONTEXT_TOKENS: Record<string, () => unknown> = {
+    op_date: () => authStore.opDate,
+  };
+
   // Local mode (Step A): capture at mount via untrack the values the form is
-  // handed — `defaults` (a draft the server prepared, open_form) under `data`.
+  // handed, in the order of a new record: the descriptor's `source.defaults`,
+  // then `defaults` (a draft the server prepared, open_form), then `data`.
   // Async modes (B/C): start empty — loadData() fills original/draft.
-  let original = $state<Record<string, unknown>>(
-    isAsyncMode ? {} : untrack(() => ({ ...(defaults ?? {}), ...data }))
-  );
-  let draft = $state<Record<string, unknown>>(
-    isAsyncMode ? {} : untrack(() => ({ ...(defaults ?? {}), ...data }))
-  );
+  function localStart(): Record<string, unknown> {
+    const out: Record<string, unknown> = {};
+    applyDefaults(out, view.source?.defaults as Record<string, unknown> | undefined);
+    return { ...out, ...(defaults ?? {}), ...data };
+  }
+  let original = $state<Record<string, unknown>>(isAsyncMode ? {} : untrack(localStart));
+  let draft = $state<Record<string, unknown>>(isAsyncMode ? {} : untrack(localStart));
   let errors = $state<Record<string, string>>({});
   let saving = $state(false);
   let loading = $state(false);
@@ -536,12 +545,6 @@
   //   • direct value → used as-is
   // An unknown "$token" on a non-deferred field is a config error: log + leave
   // empty (never guess, never call an endpoint here).
-
-  // Tokens the client can resolve from context. Anything else is server
-  // territory and must be `deferred`.
-  const CONTEXT_TOKENS: Record<string, () => unknown> = {
-    op_date: () => authStore.opDate,
-  };
 
   function resolveToken(raw: string): { set: boolean; value?: unknown } {
     const getter = CONTEXT_TOKENS[raw.slice(1)];
