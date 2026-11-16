@@ -14,9 +14,11 @@
     collapsed?: boolean;
     focusRowId?: unknown;
     onEvent?: (name: string, data: unknown) => void;
+    /** Changes when a neighbouring area wrote something: the view reads its active row again. */
+    refresh?: unknown;
   }
 
-  let { view, trigger, collapsed, focusRowId, onEvent }: Props = $props();
+  let { view, trigger, collapsed, focusRowId, onEvent, refresh }: Props = $props();
 </script>
 
 {#if view.type === 'form'}
@@ -28,13 +30,15 @@
 
 {:else if view.type === 'plugin'}
   <!-- The component gets its `props` and, in a split area, the `trigger`
-       that area received: the record the content is on. -->
+       that area received: the record the content is on. `onEvent` is how it
+       tells the page: `changed` when it wrote something. -->
   {#if pluginLoader}
     <PluginComponent
       loader={pluginLoader}
       componentId={view.component as string}
       {...(view.props as Record<string, unknown> ?? {})}
       {trigger}
+      {onEvent}
     />
   {:else}
     <!-- No loader in context: say so rather than fail on it. -->
@@ -50,6 +54,7 @@
     collapsed={collapsed}
     {focusRowId}
     onEvent={onEvent}
+    {refresh}
   />
 
 {:else if view.type === 'tabs'}

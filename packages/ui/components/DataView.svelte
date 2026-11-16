@@ -106,6 +106,7 @@
     autofocus = false,
     movableRows = false,
     onEvent = undefined as ((name: string, data: unknown) => void) | undefined,
+    refresh = undefined as unknown,
   }: {
     view: ViewDescriptor;
     trigger?: Record<string, unknown>;
@@ -124,6 +125,11 @@
      */
     movableRows?: boolean;
     onEvent?: (name: string, data: unknown) => void;
+    /**
+     * Changes when an area beside the view wrote something (PanelRenderer,
+     * `changed`): the active row is read again and announced anew.
+     */
+    refresh?: unknown;
   } = $props();
 
   /** A row moved from the keyboard: the owner moves it, the cursor stays on it. */
@@ -1205,6 +1211,16 @@
     if (view.source?.model) void refreshRows([(_activeRowData as any)[pkField]]);
     else reannounceActive();
   }
+
+  // An area beside the view wrote something: not the first value, which is
+  // where the page starts.
+  let seenRefresh = untrack(() => refresh);
+  $effect(() => {
+    const value = refresh;
+    if (value === seenRefresh) return;
+    seenRefresh = value;
+    untrack(refreshActive);
+  });
 
   function handleNavAccept() {
     if (navigatorMode === 'batch') {

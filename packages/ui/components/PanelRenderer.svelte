@@ -22,6 +22,10 @@
    *   - handleAreaEvent routes events → updates triggerMap[areaId]
    *   - triggerMap[areaId] is passed as `trigger` prop to the receiving ViewRenderer
    *
+   * An area that wrote something emits `changed`: the main content reads its
+   * active row again and announces it anew, so the figures of the list and
+   * every area that follows the row show what was written beside them.
+   *
    * pass variants:
    *   omitted      → smart default: {id} if payload has id, else full payload
    *   "*"          → full payload
@@ -109,9 +113,13 @@
     return out;
   }
 
+  // Bumped when an area wrote something (`changed`): the content's `refresh`.
+  let contentRefresh = $state(0);
+
   function handleAreaEvent(sourceId: string, eventName: string, payload: unknown) {
     const data = (payload ?? {}) as Record<string, unknown>;
     onExternalEvent?.(sourceId, eventName, data);
+    if (eventName === 'changed' && sourceId !== 'content') contentRefresh++;
     for (const area of areas) {
       const trig = area.trigger;
       if (!trig) continue;
@@ -184,6 +192,7 @@
               {focusRowId}
               {trigger}
               onEvent={emitContent}
+              refresh={contentRefresh}
             />
           {/if}
         </div>
