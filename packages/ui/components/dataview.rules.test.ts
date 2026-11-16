@@ -363,6 +363,16 @@ describe('declaredRules', () => {
   it('says nothing when the view declares none', () => {
     expect(declaredRules({})).toBeUndefined();
   });
+
+  it('resolves the values through the resolver it is given: a token of the session', () => {
+    const resolve = (v: unknown) => (v === '$user_id' ? 7 : v);
+    expect(declaredRules({ rules: [{ field: 'user_id', op: 'eq', value: '$user_id' },
+                                   { field: 'outcome', op: 'eq', value: 'open' }] }, resolve))
+      .toEqual([
+        { rule: { field: 'user_id', op: 'eq', value: 7 }, join: 'and' },
+        { rule: { field: 'outcome', op: 'eq', value: 'open' }, join: 'and' },
+      ]);
+  });
 });
 
 describe('RefSet operators', () => {

@@ -28,7 +28,8 @@
  *       answers, and the answer is applied with these same rules
  *   {action: 'open_form', page, draft, title?}                   → a new document
  *       the server prepared (a sheet, a duplicate), open in its form to be
- *       finished; saved, the view refreshes it
+ *       finished; saved, the view refreshes it. With `id` instead of `draft`,
+ *       a record that exists (one the server just wrote), opened to complete
  *   {action: 'set_query_params', params}                         → keys the view
  *       carries on every query from now on
  *
@@ -102,7 +103,7 @@ async function applyBody(body: Payload, ctx: ResultContext, fallback?: string): 
       if (typeof body.page === 'string') {
         ctx.stack.push(DataFormView, {
           formId: body.page,
-          draft: body.draft,
+          ...(body.id != null ? { recordId: body.id } : { draft: body.draft }),
           title: (body.title as string | undefined) ?? ctx.title,
           // A record of the list's own table is one of its rows; anything else
           // (a message sent, a record of another table) is not, and the list

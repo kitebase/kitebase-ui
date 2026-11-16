@@ -43,7 +43,7 @@
   import { openGuide } from './guide.svelte';
   import { _, _t } from '../i18n';
   import { serverConfig } from '../api/serverConfig.svelte';
-  import { authStore } from '../auth/store.svelte';
+  import { CONTEXT_TOKENS } from './contextTokens';
   import type { SchemaFieldInfo } from '../api/serverConfig.svelte';
   import CollectionView from './CollectionView.svelte';
   import DataFormView from './DataFormView.svelte';
@@ -209,13 +209,8 @@
   let _seenRecordId: typeof recordId = undefined as any;
   let _neverLoaded = true;
 
-  // Tokens the client can resolve from context. Anything else is server
-  // territory and must be `deferred`. Declared before the local start, which
-  // resolves them at mount.
-  const CONTEXT_TOKENS: Record<string, () => unknown> = {
-    op_date: () => authStore.opDate,
-    user_id: () => authStore.user?.id,
-  };
+  // Tokens the client can resolve from context (contextTokens.ts). Anything
+  // else is server territory and must be `deferred`.
 
   // Local mode (Step A): capture at mount via untrack the values the form is
   // handed, in the order of a new record: the descriptor's `source.defaults`,

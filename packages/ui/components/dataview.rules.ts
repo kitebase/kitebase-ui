@@ -142,9 +142,10 @@ export interface RuleRow {
  */
 export function declaredRules(
   view: { rules?: Array<{ field: string; op: string; value?: unknown }> },
+  resolve: (value: unknown) => unknown = (v) => v,
 ): RuleRow[] | undefined {
   return view.rules?.map(({ field, op, value }) => ({
-    rule: { field, op: op as RuleOperator, ...(value !== undefined ? { value } : {}) },
+    rule: { field, op: op as RuleOperator, ...(value !== undefined ? { value: resolve(value) } : {}) },
     join: 'and' as const,
   }));
 }

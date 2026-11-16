@@ -47,6 +47,7 @@
   } from './dataview.query';
   import type { QueryExtras, OrderSpec } from './dataview.query';
   import { declaredRules, type RuleRow } from './dataview.rules';
+  import { resolveContextToken } from './contextTokens';
   import { takeRestorable, remember } from './dataview.session';
   import RuleEditorView from './RuleEditorView.svelte';
 
@@ -172,7 +173,7 @@
   // at", and that meaning does not survive a different set.
   let quickSearch = $state(savedState?.search ?? '');
   let ruleRows = $state<RuleRow[]>(
-    savedState?.rules ?? untrack(() => initialRules ?? declaredRules(view)) ?? []);
+    savedState?.rules ?? untrack(() => initialRules ?? declaredRules(view, resolveContextToken)) ?? []);
   // Empty means "the order the view opens with": an absolute absence of order
   // is not a state worth expressing, since the server ends every paginated
   // query with the key anyway.
