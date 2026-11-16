@@ -349,6 +349,7 @@
   .kb-board-ribbon[data-tone='success'] { --kb-tone: var(--kb-success); }
   .kb-board-ribbon[data-tone='warning'] { --kb-tone: var(--kb-warning); }
   .kb-board-ribbon[data-tone='danger']  { --kb-tone: var(--kb-danger); }
+  .kb-board-ribbon[data-tone='neutral'] { --kb-tone: var(--kb-text-muted); }
   .kb-board-ribbon {
     flex: none;
     max-width: 50%;

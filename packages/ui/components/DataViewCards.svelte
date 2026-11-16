@@ -184,6 +184,7 @@
   .kb-card-ribbon[data-tone='success'] { --kb-tone: var(--kb-success); }
   .kb-card-ribbon[data-tone='warning'] { --kb-tone: var(--kb-warning); }
   .kb-card-ribbon[data-tone='danger']  { --kb-tone: var(--kb-danger); }
+  .kb-card-ribbon[data-tone='neutral'] { --kb-tone: var(--kb-text-muted); }
   .kb-card-muted {
     opacity: 0.6;
   }

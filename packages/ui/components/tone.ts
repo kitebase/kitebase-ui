@@ -4,7 +4,9 @@
  * Declared on the column whose value it reads, read by every renderer: a grid
  * colours that cell, a card the ribbon showing that column. `muted` is the
  * one tone of the whole row: a value muted on any column greys the record out
- * (a book nobody can borrow). The tones are names, never colours: each
+ * (a book nobody can borrow). `neutral` is a state worth seeing that is
+ * neither good nor bad (nothing planned): grey, and the row stays as it is.
+ * The tones are names, never colours: each
  * renderer draws them with the `--kb-*` tokens, so a theme changes them all.
  *
  *   - field: status
@@ -16,7 +18,7 @@
  * highest minimum it reaches. A value neither names has no tone.
  */
 
-export const TONES = ['accent', 'success', 'warning', 'danger', 'muted'] as const;
+export const TONES = ['accent', 'success', 'warning', 'danger', 'neutral', 'muted'] as const;
 export type Tone = (typeof TONES)[number];
 
 export interface ColumnTone {

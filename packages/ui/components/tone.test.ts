@@ -37,3 +37,10 @@ describe('rowTones', () => {
     expect(rowTones(tones, { status: 'N', rating: 2 })).toEqual({ cells: {}, muted: true });
   });
 });
+
+describe('neutral', () => {
+  it('tones the cell grey and leaves the row as it is, unlike muted', () => {
+    const next = { next_state: { values: { none: 'neutral', overdue: 'danger' } } };
+    expect(rowTones(next, { next_state: 'none' })).toEqual({ cells: { next_state: 'neutral' }, muted: false });
+  });
+});

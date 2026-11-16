@@ -286,6 +286,7 @@
   :global(.tabulator-cell.kb-tone-success) { color: var(--kb-success); background: color-mix(in srgb, var(--kb-success) 12%, transparent); font-weight: 600; }
   :global(.tabulator-cell.kb-tone-warning) { color: var(--kb-warning); background: color-mix(in srgb, var(--kb-warning) 12%, transparent); font-weight: 600; }
   :global(.tabulator-cell.kb-tone-danger)  { color: var(--kb-danger);  background: color-mix(in srgb, var(--kb-danger) 12%, transparent); font-weight: 600; }
+  :global(.tabulator-cell.kb-tone-neutral) { color: var(--kb-text-muted); background: color-mix(in srgb, var(--kb-text-muted) 12%, transparent); font-weight: 600; }
   :global(.tabulator-row.kb-tone-muted)    { color: var(--kb-text-subtle); }
 
   /* Active row — keyboard navigation highlight */
