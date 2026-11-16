@@ -214,6 +214,7 @@
   // resolves them at mount.
   const CONTEXT_TOKENS: Record<string, () => unknown> = {
     op_date: () => authStore.opDate,
+    user_id: () => authStore.user?.id,
   };
 
   // Local mode (Step A): capture at mount via untrack the values the form is

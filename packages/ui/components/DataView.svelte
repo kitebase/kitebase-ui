@@ -375,6 +375,14 @@
     return (n: number) => formatNumber(n, shape);
   });
 
+  /** What a record added on the board starts from: its first column, within the value shown. */
+  function boardDefaults(): Record<string, unknown> {
+    if (!isBoard || !boardState) return {};
+    const first = boardValues.find((v) => !v.folded) ?? boardValues[0];
+    return { ...(boardExtras.context ?? {}),
+             ...(first ? { [boardState.column]: first.value } : {}) };
+  }
+
   /** A card dropped on another column: the state written through the db port, judged by the rules. */
   async function handleBoardMove(row: Record<string, unknown>, value: unknown) {
     const model = view.source?.model as string | undefined;
@@ -436,6 +444,15 @@
       details: text.filter((c) => c.key !== title).slice(0, 3).map((c) => c.key),
     };
   }
+  // The labels of the columns of the table with choices, by key: a card and
+  // the board show them, as the grid does.
+  const cardLabels = $derived(Object.fromEntries((view.columns ?? []).flatMap((c) => {
+    const own = c.field.includes('.') ? null : c.field.replace(/\s+as\s+.*$/i, '').trim();
+    const choices = own ? sourceColumn(own)?.choices : undefined;
+    return choices?.length
+      ? [[extractFieldKey(c.field), Object.fromEntries(choices.map((ch) => [String(ch.value), ch.label]))]]
+      : [];
+  })) as Record<string, Record<string, string>>);
   const cardTitles = $derived(Object.fromEntries((view.columns ?? []).map((c) =>
     [extractFieldKey(c.field), c.title ?? extractFieldKey(c.field)])));
 
@@ -1096,8 +1113,9 @@
       formId,
       recordId: recordId ?? null,
       // The view's own defaults: a record added from "Customers" is born one,
-      // and one added on a board within a pipeline is born in that pipeline.
-      defaults: isNew ? { ...(view.source?.defaults ?? {}), ...(boardExtras.context ?? {}) } : undefined,
+      // and one added on a board is born in its first column, within the
+      // value the board shows (a pipeline).
+      defaults: isNew ? { ...(view.source?.defaults ?? {}), ...boardDefaults() } : undefined,
       title: label,
       onSaved: (savedData: Record<string, unknown>) => {
         const id = isNew ? savedData[pkField] : recordId;
@@ -1485,6 +1503,7 @@
           {card}
           tones={columnTones}
           titles={cardTitles}
+          labels={cardLabels}
           {pkField}
           activeId={_activeRowData ? _activeRowData[pkField] : null}
           onRowClick={(row) => { _activeRowData = row; onEvent?.('row_click', row); }}
@@ -1499,6 +1518,7 @@
           {card}
           tones={columnTones}
           titles={cardTitles}
+          labels={cardLabels}
           {pkField}
           activeId={_activeRowData ? _activeRowData[pkField] : null}
           sumField={view.kanban?.sum}

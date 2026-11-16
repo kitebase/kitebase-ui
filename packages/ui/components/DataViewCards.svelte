@@ -28,6 +28,8 @@
     card: CardConfig;
     /** The title of a column, by key: the label of a card field. */
     titles: Record<string, string>;
+    /** The labels of a column's choices, by key then value: shown for the value. */
+    labels?: Record<string, Record<string, string>>;
     pkField: string;
     activeId: unknown;
     onRowClick: (row: Record<string, unknown>) => void;
@@ -37,7 +39,7 @@
     tones?: Record<string, ColumnTone>;
   }
 
-  let { rows, card, titles, pkField, activeId, onRowClick, onRowDblClick, onImageDrop, tones = {} }: Props = $props();
+  let { rows, card, titles, labels = {}, pkField, activeId, onRowClick, onRowDblClick, onImageDrop, tones = {} }: Props = $props();
 
   let dropTarget = $state<unknown>(null);
   let broken = $state<Set<string>>(new Set());
@@ -55,9 +57,15 @@
     return String(value);
   }
 
+  /** The value of a column on a card: its choice's label, else as text(). */
+  function shown(row: Record<string, unknown>, key: string): string {
+    const value = row[key];
+    return (value !== null && value !== undefined ? labels[key]?.[String(value)] : undefined) ?? text(value);
+  }
+
   /** The details of a card that have a value: on a card a bare label is noise. */
   function filled(row: Record<string, unknown>): Array<[string, string]> {
-    return (card.details ?? []).map((key): [string, string] => [key, text(row[key])])
+    return (card.details ?? []).map((key): [string, string] => [key, shown(row, key)])
       .filter(([, value]) => value !== '');
   }
 
@@ -80,7 +88,7 @@
     {@const src = card.image ? mediaUrl(row[card.image]) : null}
     {@const muted = rowTones(tones, row).muted}
     {@const tone = card.ribbon ? toneOf(tones[card.ribbon], row[card.ribbon]) : null}
-    {@const ribbon = card.ribbon && (tone || !tones[card.ribbon]) ? text(row[card.ribbon]) : ''}
+    {@const ribbon = card.ribbon && (tone || !tones[card.ribbon]) ? shown(row, card.ribbon) : ''}
     <div
       class="kb-card"
       class:kb-card-active={id !== undefined && id === activeId}
@@ -115,14 +123,14 @@
         {#if card.title || (ribbon && !card.image)}
           <!-- Without an image the ribbon sits beside the title, never over it. -->
           <div class="kb-card-head">
-            <div class="kb-card-title">{card.title ? text(row[card.title]) : ''}</div>
+            <div class="kb-card-title">{card.title ? shown(row, card.title) : ''}</div>
             {#if ribbon && !card.image}
               <span class="kb-card-ribbon" data-tone={tone}>{ribbon}</span>
             {/if}
           </div>
         {/if}
         {#if card.subtitle}
-          <div class="kb-card-subtitle">{text(row[card.subtitle])}</div>
+          <div class="kb-card-subtitle">{shown(row, card.subtitle)}</div>
         {/if}
         {#if filled(row).length > 0}
           <dl class="kb-card-fields">

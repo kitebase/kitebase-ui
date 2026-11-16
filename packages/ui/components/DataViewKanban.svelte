@@ -34,6 +34,8 @@
     card: CardConfig;
     /** The title of a column, by key: the label of a card field. */
     titles: Record<string, string>;
+    /** The labels of a column's choices, by key then value: shown for the value. */
+    labels?: Record<string, Record<string, string>>;
     pkField: string;
     activeId: unknown;
     sumField?: string;
@@ -46,7 +48,7 @@
     onMove: (row: Record<string, unknown>, value: unknown) => void;
   }
 
-  let { rows, values, stateField, card, titles, pkField, activeId, sumField,
+  let { rows, values, stateField, card, titles, labels = {}, pkField, activeId, sumField,
         formatSum = (n) => n.toLocaleString(), context = null, tones = {},
         onRowClick, onRowDblClick, onMove }: Props = $props();
 
@@ -93,8 +95,14 @@
     return String(value);
   }
 
+  /** The value of a column on a card: its choice's label, else as text(). */
+  function shown(row: Record<string, unknown>, key: string): string {
+    const value = row[key];
+    return (value !== null && value !== undefined ? labels[key]?.[String(value)] : undefined) ?? text(value);
+  }
+
   function details(row: Record<string, unknown>): Array<[string, string]> {
-    return (card.details ?? []).map((key): [string, string] => [key, text(row[key])])
+    return (card.details ?? []).map((key): [string, string] => [key, shown(row, key)])
       .filter(([, value]) => value !== '');
   }
 
@@ -150,7 +158,7 @@
             {#each column.rows as row (row[pkField] ?? row)}
               {@const id = row[pkField]}
               {@const tone = card.ribbon ? toneOf(tones[card.ribbon], row[card.ribbon]) : null}
-              {@const ribbon = card.ribbon && (tone || !tones[card.ribbon]) ? text(row[card.ribbon]) : ''}
+              {@const ribbon = card.ribbon && (tone || !tones[card.ribbon]) ? shown(row, card.ribbon) : ''}
               <div
                 class="kb-board-card"
                 class:kb-board-card-active={id !== undefined && id === activeId}
@@ -166,13 +174,13 @@
                 onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onRowDblClick(row); } }}
               >
                 <div class="kb-board-card-head">
-                  <div class="kb-board-card-title">{card.title ? text(row[card.title]) : ''}</div>
+                  <div class="kb-board-card-title">{card.title ? shown(row, card.title) : ''}</div>
                   {#if ribbon}
                     <span class="kb-board-ribbon" data-tone={tone}>{ribbon}</span>
                   {/if}
                 </div>
                 {#if card.subtitle}
-                  <div class="kb-board-card-subtitle">{text(row[card.subtitle])}</div>
+                  <div class="kb-board-card-subtitle">{shown(row, card.subtitle)}</div>
                 {/if}
                 {#if details(row).length > 0}
                   <dl class="kb-board-card-fields">
