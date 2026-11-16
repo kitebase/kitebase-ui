@@ -22,6 +22,9 @@
   import DataViewNavigator from './DataViewNavigator.svelte';
   import DataViewTable from './DataViewTable.svelte';
   import DataViewCards from './DataViewCards.svelte';
+  import DataViewKanban, { type BoardContext } from './DataViewKanban.svelte';
+  import type { BoardValue } from './kanban';
+  import { formatNumber, numberShape } from './widgets/number';
   import { rowTones } from './tone';
   import { prepareImage, sizeText } from './widgets/media';
   import DataFormView from './DataFormView.svelte';
@@ -86,6 +89,8 @@
     params?: Record<string, unknown>;
     /** The renderer the user switched to, among `allow_views`. */
     viewType?: string;
+    /** The value the board shows its columns within (a pipeline). */
+    boardWithin?: unknown;
   }
 
   // ── Props ──────────────────────────────────────────────────────────────────
@@ -204,11 +209,29 @@
   const pkField = $derived(
     serverConfig.tables[view.source?.model ?? '']?.pk_fields?.[0] ?? 'id'
   );
+  // The board (kanban): declared here because the query reads what it needs
+  // (see Board below).
+  const isBoard = $derived(activeViewType === 'kanban');
+  const boardState = $derived(serverConfig.tables[view.source?.model as string ?? '']?.state);
+  let boardWithin = $state<unknown>(untrack(() => savedState?.boardWithin));
+
+  // What the query must carry for the board: the state of every row (the list
+  // may show it only by name), and the condition of the value it is within.
+  const boardExtras = $derived.by<Partial<QueryExtras>>(() => {
+    if (!isBoard || !boardState) return {};
+    const also = [boardState.column, view.kanban?.sum].filter((f): f is string => !!f);
+    const within = boardState.within;
+    return within && boardWithin !== undefined && boardWithin !== null
+      ? { also, context: { [within]: boardWithin } }
+      : { also };
+  });
+
   const queryExtras = $derived<QueryExtras>({
     rules: ruleRows,
     search: quickSearch,
     order: userOrder.length > 0 ? userOrder : undefined,
     params: Object.keys(queryParams).length > 0 ? queryParams : undefined,
+    ...boardExtras,
   });
 
   // The descriptor's own order, in the shape the editor's order row shows: it
@@ -264,6 +287,114 @@
 
   // ── State persistence ──────────────────────────────────────────────────────
 
+  // ── Board ──────────────────────────────────────────────────────────────────
+  // The kanban renderer: the rows the table loaded, under the values of the
+  // table's state column (kitebase/state.py). The values come from the
+  // declaration, a column's choices or the rows of the table it points to, so
+  // an empty column shows. With `within`, the board shows one value of it at a
+  // time (a pipeline): its stages are the columns, its records the cards.
+
+  let boardValues = $state<BoardValue[]>([]);
+  let boardOptions = $state<Array<{ value: unknown; label: string }>>([]);
+
+  /** The column of the source table, as the server describes it. */
+  function sourceColumn(name: string) {
+    return serverConfig.tables[view.source?.model as string ?? '']?.columns.find((c) => c.name === name);
+  }
+
+  /** The rows of a table as {value, label}, in the order given, optionally filtered. */
+  async function tableValues(table: string, order: string[], filter?: Record<string, unknown>,
+                             extra: string[] = []): Promise<Array<Record<string, unknown>>> {
+    const info = serverConfig.tables[table];
+    const pk = info?.pk_fields?.[0] ?? 'id';
+    const label = info?.display_field ?? pk;
+    const query: Record<string, unknown> = {
+      table, select: [...new Set([pk, label, ...extra])], order_by: order.length ? order : [label],
+    };
+    if (filter) query.filters = { conditions: Object.entries(filter).map(([k, v]) => ({ [k]: v })) };
+    const res = await api.endpoint('query', { format: 'records', query });
+    if (res.status !== 'success') throw new Error(errorText(res, _('Query failed')));
+    return ((res.data ?? []) as Array<Record<string, unknown>>)
+      .map((r) => ({ ...r, $value: r[pk], $label: String(r[label] ?? r[pk] ?? '') }));
+  }
+
+  // The values `within` takes: the rows of the table its column points to, in
+  // their `sequence` when they have one (the order their users gave them),
+  // else by name. The first is the board's until the user picks another.
+  $effect(() => {
+    const within = isBoard ? boardState?.within : undefined;
+    const target = within ? sourceColumn(within)?.foreign_key?.target : undefined;
+    if (!target) { boardOptions = []; return; }
+    const hasSequence = serverConfig.tables[target]?.columns.some((c) => c.name === 'sequence');
+    tableValues(target, hasSequence ? ['sequence'] : []).then((rows) => {
+      boardOptions = rows.map((r) => ({ value: r.$value, label: r.$label as string }));
+      const current = untrack(() => boardWithin);
+      if (!boardOptions.some((o) => String(o.value) === String(current))) {
+        boardWithin = boardOptions[0]?.value;
+      }
+    }).catch((e) => { error = e instanceof Error ? e.message : String(e); });
+  });
+
+  // The columns: the column's choices, or the rows of its table within the value chosen
+  $effect(() => {
+    const state = isBoard ? boardState : undefined;
+    const within = boardWithin;
+    if (!state) { boardValues = []; return; }
+    if (!state.target) {
+      const folded = new Set((view.kanban?.folded ?? []).map((v) => String(v)));
+      boardValues = (sourceColumn(state.column)?.choices ?? [])
+        .map((c) => ({ value: c.value, label: String(c.label ?? c.value),
+                       folded: folded.has(String(c.value)) }));
+      return;
+    }
+    if (state.within && (within === undefined || within === null)) { boardValues = []; return; }
+    const extra = [state.order, state.folded].filter((f): f is string => !!f);
+    tableValues(state.target, state.order ? [state.order] : [],
+                state.within ? { [state.within]: within } : undefined, extra)
+      .then((rows) => {
+        boardValues = rows.map((r) => ({
+          value: r.$value, label: r.$label as string,
+          folded: state.folded ? !!r[state.folded] : false,
+        }));
+      })
+      .catch((e) => { error = e instanceof Error ? e.message : String(e); });
+  });
+
+  const boardContext = $derived<BoardContext | null>(
+    boardState?.within && boardOptions.length > 0 ? {
+      label: sourceColumn(boardState.within)?.label ?? boardState.within,
+      options: boardOptions,
+      value: boardWithin,
+      onChange: (value) => { boardWithin = value; saveViewState(); },
+    } : null);
+
+  // The total of a column reads as the sum column's numbers do
+  const formatBoardSum = $derived.by(() => {
+    const col = view.kanban?.sum ? sourceColumn(view.kanban.sum) : undefined;
+    const shape = numberShape({ ...(col ?? {}), widget: serverConfig.resolveWidget(String(col?.type ?? '')) ?? undefined });
+    return (n: number) => formatNumber(n, shape);
+  });
+
+  /** A card dropped on another column: the state written through the db port, judged by the rules. */
+  async function handleBoardMove(row: Record<string, unknown>, value: unknown) {
+    const model = view.source?.model as string | undefined;
+    const id = row[pkField];
+    if (!model || !boardState || id === undefined || id === null) return;
+    try {
+      const res = await callJudged('db', { table: model, method: 'update', id,
+                                           data: { [boardState.column]: value } });
+      if (res.cancelled) return;
+      if (res.status === 'success') {
+        await refreshRows([id]);
+        await presentOutcome(res.flow, { stack, title: view.title ?? '' });
+      } else {
+        await msgbox.error(errorText(res, _('Error saving')));
+      }
+    } catch (e) {
+      await msgbox.error(e instanceof Error ? e.message : String(e));
+    }
+  }
+
   // ── Cards ──────────────────────────────────────────────────────────────────
 
   const isCards = $derived(activeViewType === 'cards');
@@ -277,7 +408,7 @@
   // the table has them, read again whenever they change there.
   let cardRows = $state<unknown[]>([]);
   function syncCards() {
-    if (isCards && tableRef) cardRows = tableRef.getActiveData();
+    if ((isCards || isBoard) && tableRef) cardRows = tableRef.getActiveData();
   }
 
   const card = $derived(view.card ?? defaultCard());
@@ -349,7 +480,7 @@
   function switchView(type: string) {
     if (type === activeViewType) return;
     activeViewType = type;
-    if (type === 'cards') syncCards();
+    if (type === 'cards' || type === 'kanban') syncCards();
     // Tabulator measured nothing while it was hidden.
     else setTimeout(() => tableRef?.redraw(), 0);
     saveViewState();
@@ -369,6 +500,7 @@
       order: userOrder,
       params: queryParams,
       viewType: activeViewType,
+      boardWithin,
     };
     remember(getStateKey(), state);
   }
@@ -530,6 +662,18 @@
         if (resolved.formatterParams) def.formatterParams = resolved.formatterParams;
       } else if (c.formatter_params) {
         def.formatterParams = c.formatter_params;
+      } else {
+        // A column of the table with choices reads as their labels
+        const own = c.field.includes('.') ? null : c.field.replace(/\s+as\s+.*$/i, '').trim();
+        const choices = own ? sourceColumn(own)?.choices : undefined;
+        if (choices?.length) {
+          // A value off the list shows as it is, never as an empty cell
+          const labels = new Map(choices.map((ch) => [String(ch.value), ch.label]));
+          def.formatter = (cell: { getValue: () => unknown }) => {
+            const v = cell.getValue();
+            return v === null || v === undefined ? '' : labels.get(String(v)) ?? String(v);
+          };
+        }
       }
       if (c.visible === false) def.visible = false;
       if (c.frozen)            def.frozen = true;
@@ -951,8 +1095,9 @@
     stack.push(DataFormView, {
       formId,
       recordId: recordId ?? null,
-      // The view's own defaults: a record added from "Customers" is born one.
-      defaults: isNew ? view.source?.defaults : undefined,
+      // The view's own defaults: a record added from "Customers" is born one,
+      // and one added on a board within a pipeline is born in that pipeline.
+      defaults: isNew ? { ...(view.source?.defaults ?? {}), ...(boardExtras.context ?? {}) } : undefined,
       title: label,
       onSaved: (savedData: Record<string, unknown>) => {
         const id = isNew ? savedData[pkField] : recordId;
@@ -1346,12 +1491,29 @@
           onRowDblClick={handleRowDblClick}
           onImageDrop={cardImage ? handleCardImageDrop : undefined}
         />
+      {:else if isBoard && boardState}
+        <DataViewKanban
+          rows={cardRows}
+          values={boardValues}
+          stateField={boardState.column}
+          {card}
+          tones={columnTones}
+          titles={cardTitles}
+          {pkField}
+          activeId={_activeRowData ? _activeRowData[pkField] : null}
+          sumField={view.kanban?.sum}
+          formatSum={formatBoardSum}
+          context={boardContext}
+          onRowClick={(row) => { _activeRowData = row; onEvent?.('row_click', row); }}
+          onRowDblClick={handleRowDblClick}
+          onMove={handleBoardMove}
+        />
       {/if}
       <!-- DataViewTable handles 'table' and 'tree', and stays mounted under
            the cards: it owns the loaded rows. -->
       <!-- svelte-ignore a11y_click_events_have_key_events -->
       <!-- svelte-ignore a11y_no_static_element_interactions -->
-      <div class="kb-dv-table" class:kb-dv-hidden={isCards} onclickcapture={handleBadgeClick}>
+      <div class="kb-dv-table" class:kb-dv-hidden={isCards || (isBoard && !!boardState)} onclickcapture={handleBadgeClick}>
       <DataViewTable
         bind:this={tableRef}
         {rows}

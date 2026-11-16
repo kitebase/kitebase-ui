@@ -183,3 +183,23 @@ describe('touched rows', () => {
     expect(q.filters).toEqual({ conditions: [{ id: ['in', [1]] }] });
   });
 });
+
+describe('buildQuery for a board', () => {
+  const src = { model: 'Opportunity', domain: [{ outcome: 'open' }] };
+  const cols = [{ field: 'name' }, { field: 'Stage.name as stage' }];
+
+  it('selects what the board needs and the view does not show, once', () => {
+    const q = buildQuery(src, cols, {}, { also: ['stage_id', 'name'] });
+    expect(q.select).toEqual(['id', 'name', 'Stage.name as stage', 'stage_id']);
+  });
+
+  it('ANDs the value it is within as a group of its own, beside the domain', () => {
+    const q = buildQuery(src, cols, {}, { context: { pipeline_id: 2 } });
+    expect(q.filters).toEqual({ conditions: [[{ pipeline_id: 2 }], [{ outcome: 'open' }]] });
+  });
+
+  it('adds nothing for an empty context', () => {
+    const q = buildQuery(src, cols, {}, { context: {} });
+    expect(q.filters).toEqual({ conditions: [{ outcome: 'open' }] });
+  });
+});

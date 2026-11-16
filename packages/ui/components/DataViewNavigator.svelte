@@ -19,7 +19,7 @@
     Group, Download, Printer,
     RefreshCw, Ellipsis,
     ChevronDown, SquareCheckBig, Zap, ArrowUpDown,
-    Table2, LayoutGrid, ListTree,
+    Table2, LayoutGrid, ListTree, Kanban,
   } from '@lucide/svelte';
   import { untrack } from 'svelte';
   import type { NavigatorConfig, CommandItem } from './dataview.types';
@@ -118,6 +118,7 @@
     table: { icon: Table2, label: 'Table' },
     tree:  { icon: ListTree, label: 'Tree' },
     cards: { icon: LayoutGrid, label: 'Cards' },
+    kanban: { icon: Kanban, label: 'Board' },
   };
 
   // ── Visibility resolution ──────────────────────────────────────────────────
@@ -127,11 +128,11 @@
   const visibleSet = $derived(visibleButtons(config));
 
   // Column filters and ticks live in the grid's header and first column: on
-  // the cards they would toggle something nobody sees.
+  // the cards and the board they would toggle something nobody sees.
   const GRID_ONLY = new Set(['filter', 'select']);
 
   function isVisible(id: string): boolean {
-    if (activeView === 'cards' && GRID_ONLY.has(id)) return false;
+    if ((activeView === 'cards' || activeView === 'kanban') && GRID_ONLY.has(id)) return false;
     return visibleSet.has(id);
   }
 

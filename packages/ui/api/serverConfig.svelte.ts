@@ -130,6 +130,8 @@ export interface TableColumnInfo {
   type?: string;
   /** The endpoint serving the codes a CodeSet column picks from. */
   choices_endpoint?: string;
+  /** A closed set the code owns: the form's drop-down, a board's columns. */
+  choices?: Array<{ value: unknown; label: string }>;
   label?: string;
   virtual?: boolean;
   editable?: boolean;
@@ -185,6 +187,20 @@ export interface TableInfo {
    * restriction on which columns may be sorted.
    */
   indexes?: Array<{ name?: string; columns: string[] }>;
+  /**
+   * The column that says where a record stands (kitebase/state.py), which the
+   * kanban view shows as columns: from its `choices`, or the rows of `target`
+   * (the stages of one `within` at a time, in `order`, `folded` ones narrow).
+   */
+  state?: StateInfo;
+}
+
+export interface StateInfo {
+  column: string;
+  target?: string;
+  within?: string;
+  order?: string;
+  folded?: string;
 }
 
 export type TableRegistry = Record<string, TableInfo>;

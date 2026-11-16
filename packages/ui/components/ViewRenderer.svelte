@@ -43,7 +43,7 @@
     </div>
   {/if}
 
-{:else if view.type === 'table' || view.type === 'tree' || view.type === 'cards'}
+{:else if view.type === 'table' || view.type === 'tree' || view.type === 'cards' || view.type === 'kanban'}
   <DataView
     view={view as ViewDescriptor}
     trigger={trigger}

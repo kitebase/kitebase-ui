@@ -137,8 +137,15 @@ export interface ViewDescriptor {
   rules?: Array<{ field: string; op: string; value?: unknown }>;
   /** The renderers the toolbar switches between (`[table, cards]`); the view opens in `type`. */
   allow_views?: string[];
-  /** What a card shows, by the key of a column of the view (`cards`). */
+  /** What a card shows, by the key of a column of the view (`cards`, `kanban`). */
   card?: CardConfig;
+  /**
+   * The board (`kanban`): `sum`, the column whose total heads each column;
+   * `folded`, the values whose columns start folded, when the values are the
+   * code's own (`choices`). Values that are rows of a table say it themselves,
+   * in the column the table's `state` names as `folded`.
+   */
+  kanban?: { sum?: string; folded?: unknown[] };
   data_schema?: string;  // schema ID from plugin schemas: section
   [key: string]: unknown;
 }

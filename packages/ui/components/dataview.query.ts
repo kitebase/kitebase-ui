@@ -55,6 +55,16 @@ export interface QueryExtras {
    * behaviors as the list itself, so the view never has to guess.
    */
   only?: unknown[];
+  /**
+   * Fields a renderer needs whether or not the view shows them: the board
+   * reads the state of every row, which the list may show only by name.
+   */
+  also?: string[];
+  /**
+   * Conditions a renderer holds while it is on screen, ANDed like the
+   * domain: the board shows one pipeline at a time.
+   */
+  context?: Record<string, unknown>;
 }
 
 // ── Field key extraction ───────────────────────────────────────────────────
@@ -149,6 +159,9 @@ export function buildQuery(
     const fields = columns.map(c => c.field);
     const hasPk = fields.some(f => f === pk || extractFieldKey(f) === pk);
     if (!hasPk) fields.unshift(pk);
+    for (const f of extras?.also ?? []) {
+      if (!fields.some(x => x === f || extractFieldKey(x) === f)) fields.push(f);
+    }
     q.select = fields;
   }
 
@@ -173,7 +186,10 @@ export function buildQuery(
     ? serializeRuleSet(toBlocks(extras.rules))
     : undefined;
 
-  const filters = mergeDomain(src, trig, rules, extras?.only, extras?.pk || 'id');
+  const context = extras?.context && Object.keys(extras.context).length > 0
+    ? Object.entries(extras.context).map(([k, v]) => ({ [k]: v }))
+    : undefined;
+  const filters = mergeDomain(src, trig, rules, extras?.only, extras?.pk || 'id', context);
   if (filters !== undefined) {
     q.filters = filters;
   }
@@ -224,8 +240,10 @@ export function mergeDomain(
   rules?: unknown[],
   only?: unknown[],
   pk = 'id',
+  context?: unknown[],
 ): unknown | undefined {
   const groups = [
+    context && context.length > 0 ? context : null,
     conditionsOf(applyTriggerVars(src.domain, trig)),
     conditionsOf(applyTriggerVars(src.filters, trig)),
     rules && rules.length > 0 ? rules : null,
