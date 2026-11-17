@@ -5,13 +5,24 @@
    * Keyboard: ↑↓ navigate options, Enter selects, Escape closes/restores,
    * Tab closes. "Search more…" is the last navigable item (opens picker).
    *
+   * Enter or Tab on typed text, with no row highlighted, looks the text up as
+   * the table's key (`search_key`: the declared code, else the id) and takes
+   * the record that has it. Only an exact key is taken without a choice: a
+   * match by content is picked from the list. Enter that finds nothing leaves
+   * the list open on the content search; Tab has already moved on, so the
+   * field goes back to its value and says what was not found.
+   *
+   * Where the table declares a code (`code_field`), it is shown beside the
+   * name, in the list and as a badge on the field: seen while choosing, it is
+   * typed the next time. Never inside the text, which is what a search edits.
+   *
    * field.foreign_key: { target: string; field: string }  — from auto-form
    * serverConfig.tables[target].display_field             — label column
    * The lookup sends the typed text as the query's `search` key: which columns
    * it matches is the target table's own answer, resolved server-side.
    */
   import { untrack, getContext } from 'svelte';
-  import { _ } from '../../i18n';
+  import { _, _t } from '../../i18n';
   import { api } from '$kitebase/api/client';
   import { errorText } from '$kitebase/api/envelope';
   import { serverConfig } from '$kitebase/api/serverConfig.svelte';
@@ -49,18 +60,44 @@
   // server's answer, sent back through the `search` key of the query.
   let searchable = $derived.by(() => {
     const table = fkTarget ? serverConfig.tables[fkTarget] : undefined;
-    return !!table && ((table.search_fields?.length ?? 0) > 0 || !!table.search_pk);
+    return !!table && ((table.search_fields?.length ?? 0) > 0 || !!table.search_key);
   });
+  // Whether a typed text can name a record exactly (DATA_MODEL.md §4.4)
+  let hasKey = $derived(!!(fkTarget && serverConfig.tables[fkTarget]?.search_key));
+
+  // The target's declared code, shown beside the label; none without one
+  let codeField = $derived(fkTarget ? serverConfig.tables[fkTarget]?.code_field : undefined);
+
+  type Option = { id: unknown; label: string; code: string };
+
+  /** The columns an option is built from: the key, the label, the code. */
+  function optionColumns(pk: string, df: string, code: string | undefined): string[] {
+    return [...new Set([pk, df, ...(code ? [code] : [])])];
+  }
+
+  function toOption(row: Record<string, unknown>, pk: string, df: string,
+                    code: string | undefined): Option {
+    const c = code ? row[code] : null;
+    return { id: row[pk], label: String(row[df] ?? ''), code: c == null ? '' : String(c) };
+  }
 
   let currentLabel = $state(untrack(() => ''));
+  let currentCode  = $state(untrack(() => ''));
   let query        = $state(untrack(() => ''));
-  let options      = $state<Array<{ id: unknown; label: string }>>([]);
+  let options      = $state<Option[]>([]);
   let open         = $state(false);
   let searching    = $state(false);
   // A search the server refused: said in the list, never read as "no results"
   let searchError  = $state<string | null>(null);
   // -1 = none; 0..options.length-1 = option; options.length = "Search more…"
   let highlighted  = $state(-1);
+  // A code typed and confirmed with Tab that found nothing: said under the
+  // field, since the focus has already left it and the list with it.
+  let missedCode   = $state<string | null>(null);
+  let tabPending   = false;
+  // While the user types, the text is a search and the badge would name the
+  // old value: it is shown on the label only.
+  let showBadge    = $derived(!!currentCode && query === currentLabel);
   let inputEl      = $state<HTMLInputElement | undefined>();
   let listEl       = $state<HTMLUListElement | undefined>();
 
@@ -76,13 +113,15 @@
     const df = displayField;
     const tbl = fkTarget;
     const pk = fkPkField;
+    const code = codeField;
     if (v == null || v === '') {
       currentLabel = '';
+      currentCode = '';
       query = '';
       return;
     }
     if (!tbl || !df) return;
-    _loadLabel(v, tbl, pk, df);
+    _loadLabel(v, tbl, pk, df, code);
   });
 
   // All parameters explicit — no outer-scope $derived access inside async body.
@@ -90,7 +129,8 @@
   // go through the server's visibility filters: a record archived (or no longer
   // matching the picklist's domain) after the document was saved must still
   // render its label. Only the search below is filtered.
-  async function _loadLabel(v: unknown, table: string, pkField: string, df: string) {
+  async function _loadLabel(v: unknown, table: string, pkField: string, df: string,
+                            code: string | undefined) {
     try {
       const res = await api.endpoint('query', {
         format: 'records',
@@ -100,16 +140,17 @@
           // and the querybuilder silently ignored it — which meant the whole row
           // came back instead, so a display field that only exists as an
           // expression (a hybrid property) was never in the answer.
-          select: [pkField, df],
+          select: optionColumns(pkField, df, code),
           filters: { conditions: { column: pkField, op: 'eq', value: v } },
           limit: 1,
           resolve: true,
         },
       });
       if (res.status === 'success' && Array.isArray(res.data) && res.data.length > 0) {
-        const label = String((res.data[0] as Record<string, unknown>)[df] ?? '');
-        currentLabel = label;
-        query = label;
+        const opt = toOption(res.data[0] as Record<string, unknown>, pkField, df, code);
+        currentLabel = opt.label;
+        currentCode = opt.code;
+        query = opt.label;
       }
     } catch (_) {}
   }
@@ -119,6 +160,7 @@
   function handleInput(e: Event) {
     const q = (e.target as HTMLInputElement).value;
     query = q;
+    missedCode = null;
     if (!q.trim()) {
       options = [];
       open = false;
@@ -146,7 +188,7 @@
         format: 'records',
         query: {
           table: fkTarget,
-          select: [fkPkField, df],
+          select: optionColumns(fkPkField, df, codeField),
           search: q,
           ...(Object.keys(filters).length ? { filters: { conditions: filterConditions(filters) } } : {}),
           // In the order the user reads: by the label, not by the key.
@@ -155,10 +197,7 @@
         },
       });
       if (res.status === 'success' && Array.isArray(res.data)) {
-        options = res.data.map((r) => {
-          const row = r as Record<string, unknown>;
-          return { id: row[fkPkField], label: String(row[df] ?? '') };
-        });
+        options = res.data.map((r) => toOption(r as Record<string, unknown>, fkPkField, df, codeField));
       } else {
         searchError = errorText(res, _('The search failed'));
         options = [];
@@ -168,8 +207,71 @@
     }
   }
 
-  function selectOption(opt: { id: unknown; label: string }) {
+  /**
+   * The record whose key is exactly this text, or null. The domain applies as
+   * it does to the search: a code outside it is not one the field accepts.
+   */
+  async function _lookupKey(q: string): Promise<Option | null> {
+    const df = displayField;
+    if (!fkTarget || !df || !hasKey) return null;
+    const res = await api.endpoint('query', {
+      format: 'records',
+      query: {
+        table: fkTarget,
+        select: optionColumns(fkPkField, df, codeField),
+        code: q,
+        ...(Object.keys(filters).length ? { filters: { conditions: filterConditions(filters) } } : {}),
+        limit: 2,
+      },
+    });
+    if (res.status !== 'success' || !Array.isArray(res.data) || res.data.length !== 1) return null;
+    return toOption(res.data[0] as Record<string, unknown>, fkPkField, df, codeField);
+  }
+
+  /** Text the user typed that is not the label of the current value. */
+  function typedText(): string {
+    const q = query.trim();
+    return q && query !== currentLabel ? q : '';
+  }
+
+  // Enter with nothing highlighted: the key if it matches, else the list now,
+  // without waiting for the debounce. A match moves on as Enter does on a
+  // closed list: the key is sent again, and the form takes it.
+  async function enterTyped(q: string, el: HTMLElement | undefined) {
+    clearTimeout(debounceTimer);
+    const hit = await _lookupKey(q);
+    if (query.trim() !== q) return;            // typed on meanwhile: that wins
+    if (hit) {
+      selectOption(hit);
+      el?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    } else {
+      open = true;
+      _search(q);
+    }
+  }
+
+  // Tab: the focus moves on at once, and the key is resolved behind it.
+  async function tabTyped(q: string) {
+    clearTimeout(debounceTimer);
+    tabPending = true;
+    let hit: Option | null = null;
+    try {
+      hit = await _lookupKey(q);
+    } finally {
+      tabPending = false;
+    }
+    if (hit) {
+      selectOption(hit);
+    } else {
+      query = currentLabel;
+      missedCode = q;
+    }
+  }
+
+  function selectOption(opt: Option) {
+    missedCode = null;
     currentLabel = opt.label;
+    currentCode = opt.code;
     query = opt.label;
     options = [];
     open = false;
@@ -179,7 +281,9 @@
   }
 
   function clearValue() {
+    missedCode = null;
     currentLabel = '';
+    currentCode = '';
     query = '';
     options = [];
     open = false;
@@ -225,9 +329,16 @@
     }
 
     if (e.key === 'Tab') {
+      const q = highlighted < 0 ? typedText() : '';
       open = false;
+      if (q && hasKey) {
+        tabTyped(q);
+      } else if (highlighted >= 0 && highlighted < options.length) {
+        selectOption(options[highlighted]);
+      } else {
+        query = currentLabel;
+      }
       highlighted = -1;
-      query = currentLabel;
       // let Tab propagate for focus advance
       return;
     }
@@ -269,6 +380,10 @@
         openPicker();
       } else if (highlighted >= 0 && highlighted < options.length) {
         selectOption(options[highlighted]);
+      } else if (typedText() && hasKey) {
+        // The answer decides whether the form moves on: not yet.
+        e.stopPropagation();
+        enterTyped(typedText(), inputEl);
       }
       return;
     }
@@ -278,7 +393,8 @@
     setTimeout(() => {
       open = false;
       highlighted = -1;
-      query = currentLabel;
+      // A Tab lookup still running owns the text: it sets it when it answers.
+      if (!tabPending) query = currentLabel;
       onblur?.();
     }, 150);
   }
@@ -291,6 +407,7 @@
     const _page    = pickerPage;
     const _pkField = fkPkField;
     const _df      = displayField;
+    const _code    = codeField;
     stack.push(
       FKPickerView,
       { table: _table, page: _page, rules: filterRules(filters),
@@ -302,12 +419,13 @@
         if (id == null) return;
         // Show id immediately so the field is never visually empty on return.
         currentLabel = String(id);
+        currentCode = '';
         query = String(id);
         onchange(id);
         // As a choice from the list does: the field is validated again.
         onblur?.();
         // Then replace with the real label (row may lack virtual display fields).
-        if (_df) _loadLabel(id, _table, _pkField, _df);
+        if (_df) _loadLabel(id, _table, _pkField, _df, _code);
       }
     );
   }
@@ -319,6 +437,9 @@
     style="border-color: var(--kb-border); background: var(--kb-surface-subtle); color: var(--kb-text)"
   >
     {currentLabel || '—'}
+    {#if currentCode}
+      <span class="float-right text-xs" style="color: var(--kb-text-subtle)">{currentCode}</span>
+    {/if}
   </span>
 
 {:else}
@@ -326,7 +447,7 @@
     <input
       bind:this={inputEl}
       type="text"
-      class="input w-full pr-16 {field.error ? 'input-error' : ''}"
+      class="input w-full {showBadge ? 'pr-28' : 'pr-16'} {field.error ? 'input-error' : ''}"
       placeholder={field.placeholder as string | undefined ?? _('Search…')}
       value={query}
       oninput={handleInput}
@@ -335,6 +456,14 @@
       aria-label={field.label ?? field.name}
       aria-autocomplete="list"
     />
+
+    <!-- The code of the chosen record: beside the text, never in it -->
+    {#if showBadge}
+      <span
+        class="pointer-events-none absolute right-14 top-1/2 -translate-y-1/2 rounded px-1.5 text-xs"
+        style="color: var(--kb-text-subtle); background: var(--kb-surface-subtle)"
+      >{currentCode}</span>
+    {/if}
 
     <!-- Clear (×) — shown when a value is selected -->
     {#if currentLabel}
@@ -393,7 +522,12 @@
                        {String(value) === String(opt.id) ? 'font-semibold text-brand' : ''}"
                 onclick={() => selectOption(opt)}
               >
-                {opt.label}
+                <span class="flex items-baseline justify-between gap-3">
+                  <span>{opt.label}</span>
+                  {#if opt.code}
+                    <span class="shrink-0 text-xs font-normal" style="color: var(--kb-text-subtle)">{opt.code}</span>
+                  {/if}
+                </span>
               </li>
             {/each}
           {/if}
@@ -419,4 +553,7 @@
       </div>
     {/if}
   </div>
+  {#if missedCode}
+    <p class="mt-1 text-xs text-danger" role="alert">{_t('Nothing with the code {code}', { code: missedCode })}</p>
+  {/if}
 {/if}

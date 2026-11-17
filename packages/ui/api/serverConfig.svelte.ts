@@ -180,7 +180,10 @@ export interface TableInfo {
    * are good for here is knowing whether the table is searchable at all.
    */
   search_fields?: string[];
-  search_pk?: string;
+  /** The column matched exactly: the declared code, else the primary key. */
+  search_key?: string;
+  /** The column declared as the table's code (`code_field`), when there is one. */
+  code_field?: string;
   /**
    * Compound indexes as declared in the plugin model. Used to suggest an order
    * the database can serve cheaply — a priority in the order combo, never a

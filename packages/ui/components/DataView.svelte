@@ -260,7 +260,7 @@
     if (propData !== undefined || !view.source?.model) return false;
     if ((view.navigator as NavigatorConfig | undefined)?.hide?.includes('quick_search')) return false;
     const table = serverConfig.tables[view.source.model as string];
-    return !!table && ((table.search_fields?.length ?? 0) > 0 || !!table.search_pk);
+    return !!table && ((table.search_fields?.length ?? 0) > 0 || !!table.search_key);
   });
   const allowViews = $derived(view.allow_views ?? []);
   const selectable = $derived(selectMode || view.policy?.selection === true);
