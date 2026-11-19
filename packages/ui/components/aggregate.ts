@@ -33,6 +33,12 @@ export interface TreeNode {
    * tree is saved; until then this is what says there is something to save.
    */
   reordered?: boolean;
+  /**
+   * What the server says about the record without it being a value: `$version`,
+   * by which a save proves which version it was made from. Kept as received and
+   * sent back on the root, never read here.
+   */
+  [meta: `$${string}`]: unknown;
 }
 
 export interface Aggregate {
@@ -365,7 +371,12 @@ export function renumber(parent: TreeNode, cid: string, field: string): void {
  * but deletions below a row that goes away.
  */
 export function serialize(agg: Aggregate): { page: string; root: TreeNode } {
-  return { page: agg.page, root: pack(agg.root, true)! };
+  return { page: agg.page, root: { ...pack(agg.root, true)!, ...metadataOf(agg.root) } };
+}
+
+/** The `$` keys of a node, as the server handed them out. */
+function metadataOf(node: TreeNode): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(node).filter(([key]) => key.startsWith('$')));
 }
 
 function pack(node: TreeNode, isRoot: boolean): TreeNode | null {
@@ -384,8 +395,8 @@ function pack(node: TreeNode, isRoot: boolean): TreeNode | null {
   }
 
   // The root always carries an operation, even when its own fields did not move:
-  // the optimistic lock will want that touch (relations.md §8). An intermediate
-  // row has no such reason to be written.
+  // a change below it is a change of the document. An intermediate row has no
+  // such reason to be written.
   const op = node.op ?? (isRoot ? (node.id < 0 ? 'create' : 'update') : undefined);
   if (!op && !touchedBelow) return null;
 

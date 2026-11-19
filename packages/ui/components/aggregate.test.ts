@@ -28,6 +28,17 @@ describe('what travels, and what stays home', () => {
     expect(root).toEqual({ op: 'update', id: 7, values: {}, children: {} });
   });
 
+  it('sends back the version the root was loaded with, and nothing of a row', () => {
+    const tree = { ...loaded(), $version: 'abc' };
+    tree.children.authors[0] = { ...tree.children.authors[0], $version: 'row' } as TreeNode;
+    const agg = loadedAggregate('book_form', tree);
+    rowsOf(agg.root, 'authors')[0].op = 'delete';
+
+    const { root } = serialize(agg);
+    expect(root.$version).toBe('abc');
+    expect(root.children.authors[0]).toEqual({ op: 'delete', id: 42, values: {}, children: {} });
+  });
+
   it('sends only the keys the user changed', () => {
     const agg = loadedAggregate('book_form', loaded());
     setValues(agg.root, { title: 'Nineteen Eighty-Four', isbn: '0-452-28423-4' });
