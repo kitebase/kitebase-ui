@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   newAggregate, loadedAggregate, draftAggregate, addRow, removeRow, setValues, serialize,
   liveRows, rowsOf, isDirty, cloneNode, collectionNodes, snapshot, applyRows,
-  moveRows, moveRow, renumber,
+  moveRows, moveRow, renumber, mergeTrees,
   type TreeNode,
 } from './aggregate';
 
@@ -343,3 +343,168 @@ describe('the order of the rows', () => {
       .toEqual([['a', 1, undefined], ['new', 2, 'create'], ['b', 3, 'update']]);
   });
 });
+
+
+describe('touched remembers what was loaded', () => {
+  it('keeps the value a key had before its first change', () => {
+    const agg = loadedAggregate('book_form', loaded());
+    setValues(agg.root, { title: 'Animal Farm' });
+    setValues(agg.root, { title: 'Homage to Catalonia' });
+    expect(agg.root.touched).toEqual({ title: '1984' });
+  });
+
+  it('forgets a key brought back, and the row is clean again', () => {
+    const agg = loadedAggregate('book_form', loaded());
+    const row = agg.root.children.authors[0];
+    setValues(row, { notes: 'second' });
+    expect(row.op).toBe('update');
+    setValues(row, { notes: 'first' });
+    expect(row.touched).toEqual({});
+    expect(row.op).toBeUndefined();
+    expect(isDirty(agg.root)).toBe(false);
+  });
+
+  it('a new row lists its keys and stays a create', () => {
+    const agg = loadedAggregate('book_form', loaded());
+    const row = addRow(agg, agg.root, 'authors', { author_id: 9 });
+    setValues(row, { author_id: undefined });
+    expect(row.op).toBe('create');
+    expect(Object.keys(row.touched!)).toEqual(['author_id']);
+  });
+});
+
+describe('merging my tree onto theirs', () => {
+  /** The tree after a save of theirs: `change` edits a copy of the loaded one. */
+  const theirs = (change: (node: TreeNode) => void = () => {}): TreeNode => {
+    const node = loaded();
+    change(node);
+    return { ...node, $version: 'v2' };
+  };
+  const mine = () => loadedAggregate('book_form', { ...loaded(), $version: 'v1' });
+
+  it('puts my change on theirs when we touched different fields', () => {
+    const agg = mine();
+    setValues(agg.root, { title: 'Animal Farm' });
+    const { root, changes, conflicts } = mergeTrees(agg.root, theirs((n) => { n.values.isbn = 'X'; }));
+
+    expect(root.values).toEqual({ title: 'Animal Farm', isbn: 'X' });
+    expect(root.op).toBe('update');
+    expect(root.touched).toEqual({ title: '1984' });
+    expect(conflicts).toEqual([]);
+    expect(changes).toEqual([{ kind: 'field', path: [], field: 'isbn', from: '0-452-28423-4', to: 'X' }]);
+  });
+
+  it('a field we both changed is a conflict, provisionally mine', () => {
+    const agg = mine();
+    setValues(agg.root, { title: 'Animal Farm' });
+    const { root, conflicts } = mergeTrees(agg.root, theirs((n) => { n.values.title = 'Burmese Days'; }));
+
+    expect(conflicts).toEqual([{ kind: 'field', path: [], field: 'title',
+                                 base: '1984', mine: 'Animal Farm', theirs: 'Burmese Days' }]);
+    expect(root.values.title).toBe('Animal Farm');
+    // Based on theirs now: taking their value back makes the field clean
+    expect(root.touched).toEqual({ title: 'Burmese Days' });
+  });
+
+  it('the same value written by both is no conflict and no change of mine', () => {
+    const agg = mine();
+    setValues(agg.root, { title: 'Animal Farm' });
+    const { root, conflicts } = mergeTrees(agg.root, theirs((n) => { n.values.title = 'Animal Farm'; }));
+    expect(conflicts).toEqual([]);
+    expect(root.op).toBeUndefined();
+  });
+
+  it('a list compares by what it holds', () => {
+    const tagged = (): TreeNode => ({ ...loaded(), values: { ...loaded().values, tags: [1, 2] } });
+    const agg = loadedAggregate('book_form', tagged());
+    setValues(agg.root, { tags: [1, 2, 3] });
+    const { conflicts, changes } = mergeTrees(agg.root, { ...tagged(), $version: 'v2' });
+    expect(conflicts).toEqual([]);
+    expect(changes).toEqual([]);
+  });
+
+  it('carries their version, so the next save passes the check', () => {
+    const agg = mine();
+    setValues(agg.root, { title: 'Animal Farm' });
+    const merged = mergeTrees(agg.root, theirs());
+    const { root } = serialize({ ...agg, root: merged.root });
+    expect(root.$version).toBe('v2');
+    expect(root.values).toEqual({ title: 'Animal Farm' });
+  });
+
+  it('a row they added is there, mine stays after the row it followed', () => {
+    const agg = mine();
+    const added = addRow(agg, agg.root, 'authors', { author_id: 8 });
+    // mine is last on my side: after 43
+    const { root, changes } = mergeTrees(agg.root, theirs((n) => {
+      n.children.authors.push({ id: 44, values: { author_id: 5, notes: null }, children: {} });
+    }));
+    expect(root.children.authors.map((r) => r.id)).toEqual([42, 43, added.id, 44]);
+    expect(root.children.authors[2].op).toBe('create');
+    expect(changes).toEqual([{ kind: 'added', path: [], cid: 'authors', id: 44 }]);
+  });
+
+  it('a row they removed and I left alone just goes', () => {
+    const agg = mine();
+    const { root, conflicts, changes } = mergeTrees(agg.root, theirs((n) => {
+      n.children.authors.splice(1, 1);
+    }));
+    expect(root.children.authors.map((r) => r.id)).toEqual([42]);
+    expect(conflicts).toEqual([]);
+    expect(changes).toEqual([{ kind: 'removed', path: [], cid: 'authors', id: 43 }]);
+  });
+
+  it('a row they removed and I changed is a conflict that keeps what I had', () => {
+    const agg = mine();
+    setValues(agg.root.children.authors[1], { notes: 'mine' });
+    const { root, conflicts } = mergeTrees(agg.root, theirs((n) => { n.children.authors.splice(1, 1); }));
+    expect(root.children.authors.map((r) => r.id)).toEqual([42]);
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]).toMatchObject({ kind: 'removed', cid: 'authors', row: { id: 43, values: { notes: 'mine' } } });
+  });
+
+  it('a row I removed and they changed is a conflict, still removed', () => {
+    const agg = mine();
+    removeRow(agg.root, 'authors', 42);
+    const { root, conflicts, changes } = mergeTrees(agg.root, theirs((n) => {
+      n.children.authors[0].values.notes = 'theirs';
+    }));
+    expect(conflicts).toEqual([{ kind: 'changed', path: [], cid: 'authors', id: 42 }]);
+    expect(changes).toEqual([{ kind: 'field', path: [{ cid: 'authors', id: 42 }],
+                               field: 'notes', from: 'first', to: 'theirs' }]);
+    expect(liveRows(root, 'authors').map((r) => r.id)).toEqual([43]);
+    expect(serialize({ ...agg, root }).root.children.authors).toEqual(
+      [{ op: 'delete', id: 42, values: {}, children: {} }]);
+  });
+
+  it('a row I removed and they left alone stays removed, quietly', () => {
+    const agg = mine();
+    removeRow(agg.root, 'authors', 42);
+    const { conflicts } = mergeTrees(agg.root, theirs((n) => { n.values.isbn = 'X'; }));
+    expect(conflicts).toEqual([]);
+  });
+
+  it('a change of mine in a row merges by the row, not by its position', () => {
+    const agg = mine();
+    setValues(agg.root.children.authors[1], { notes: 'mine' });
+    const { root, conflicts } = mergeTrees(agg.root, theirs((n) => {
+      n.children.authors.reverse();
+      n.children.authors[1].values.notes = 'first, theirs';
+    }));
+    expect(conflicts).toEqual([]);
+    expect(root.children.authors.map((r) => [r.id, r.values.notes])).toEqual(
+      [[43, 'mine'], [42, 'first, theirs']]);
+  });
+
+  it('touches neither tree', () => {
+    const agg = mine();
+    setValues(agg.root, { title: 'Animal Farm' });
+    const before = JSON.stringify(agg.root);
+    const other = theirs((n) => { n.values.isbn = 'X'; });
+    const otherBefore = JSON.stringify(other);
+    mergeTrees(agg.root, other);
+    expect(JSON.stringify(agg.root)).toBe(before);
+    expect(JSON.stringify(other)).toBe(otherBefore);
+  });
+});
+

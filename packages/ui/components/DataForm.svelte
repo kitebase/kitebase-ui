@@ -48,7 +48,7 @@
   import CollectionView from './CollectionView.svelte';
   import DataFormView from './DataFormView.svelte';
   import { msgbox } from './msgbox.svelte';
-  import { callJudged, FlowCancelled, FlowRefused } from './flow';
+  import { callJudged, FlowCancelled, FlowMerged, FlowRefused } from './flow';
   import { applyResult } from './resultAction';
   import type { Flow } from '../api/types';
   import { resolveIcon } from './icons';
@@ -953,6 +953,14 @@
         } catch (e) {
           // A question dismissed: nothing written, nothing to report, still dirty
           if (e instanceof FlowCancelled) return;
+          // Saved by someone else first: theirs as loaded, mine on top, still dirty
+          if (e instanceof FlowMerged) {
+            original = { ...original, ...e.loaded };
+            draft = { ...draft, ...e.values };
+            errors = {};
+            internalStatus = { message: e.message, type: 'warning' };
+            return;
+          }
           if (e instanceof FlowRefused && e.patch) draft = { ...draft, ...e.patch };
           if (e instanceof FlowRefused && e.errors) showFieldErrors(e.message, e.errors);
           else internalStatus = { message: e instanceof Error ? e.message : String(e), type: 'error' };

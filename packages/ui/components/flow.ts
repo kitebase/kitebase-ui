@@ -96,3 +96,13 @@ export class FlowRefused extends Error {
   constructor(message: string, public patch?: Record<string, unknown>,
               public errors?: Record<string, string>) { super(message); }
 }
+
+/**
+ * Not saved, because someone else saved first, and my changes are back on top
+ * of theirs: the form takes their values as loaded and the merged ones as typed,
+ * stays dirty and says what happened.
+ */
+export class FlowMerged extends Error {
+  constructor(message: string, public loaded: Record<string, unknown>,
+              public values: Record<string, unknown>) { super(message); }
+}

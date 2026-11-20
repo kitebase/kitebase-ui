@@ -219,4 +219,31 @@ registerTranslations('it', {
   // field help
   'Help':                     'Aiuto',
   'Help (F1)':                'Aiuto (F1)',
+
+  // saved by someone else first
+  '(empty)':                  '(vuoto)',
+  '{collection}, row {n}':    '{collection}, riga {n}',
+  '{collection}, removed row {n}': '{collection}, riga eliminata {n}',
+  '{field} from {from} to {to}': '{field} da {from} a {to}',
+  '{n} changed':              '{n} modificate',
+  '{n} added':                '{n} aggiunte',
+  '{n} removed':              '{n} eliminate',
+  'Someone else saved this document meanwhile: {what}.':
+    'Nel frattempo un altro ha salvato questo documento: {what}.',
+  'Someone else saved this document meanwhile.':
+    'Nel frattempo un altro ha salvato questo documento.',
+  '{n} rows you changed were removed: your changes to them are lost.':
+    'Righe che avevi modificato e che sono state eliminate: {n}, le tue modifiche a quelle righe sono perse.',
+  'Your changes are back on top of theirs: check and save again.':
+    'Le tue modifiche sono state rimesse sopra le sue: controlla e salva di nuovo.',
+  'Your changes and theirs meet': 'Le tue modifiche e le sue si sovrappongono',
+  'When you opened it: {base}': "Quando l'hai aperto: {base}",
+  'Mine: {value}':            'La mia: {value}',
+  'Theirs: {value}':          'La sua: {value}',
+  'You removed this row, and someone else changed it meanwhile.':
+    "Hai eliminato questa riga, e nel frattempo un altro l'ha modificata.",
+  'Remove it anyway':         'Eliminala comunque',
+  'Keep the row, with their changes': 'Tieni la riga, con le sue modifiche',
+  'Someone else deleted this document meanwhile: it cannot be saved':
+    'Nel frattempo un altro ha eliminato questo documento: non si può salvare',
 });

@@ -29,12 +29,14 @@
   import { errorText } from '$kitebase/api/envelope';
   import DataForm from './DataForm.svelte';
   import PanelRenderer from './PanelRenderer.svelte';
-  import { callJudged, presentOutcome, FlowCancelled, FlowRefused } from './flow';
+  import { callJudged, presentOutcome, FlowCancelled, FlowMerged, FlowRefused } from './flow';
+  import { labelsOf, mergeMessage, resolveConflicts } from './conflict';
   import { applyResult } from './resultAction';
   import { resolveRecordTokens } from './record';
   import type { Flow } from '../api/types';
   import {
-    collectionNodes, draftAggregate, loadedAggregate, newAggregate, renumber, serialize, setValues,
+    collectionNodes, draftAggregate, loadedAggregate, mergeTrees, newAggregate, renumber, serialize,
+    setValues,
     type Aggregate, type DraftNode, type TreeNode,
   } from './aggregate';
   import type { FormDescriptor, LayoutNode } from './dataform.types';
@@ -200,7 +202,17 @@
     const res = await callJudged('save_tree', serialize(agg), title);
     if (res.cancelled) throw new FlowCancelled();
     if (res.status !== 'success') {
-      const errors = (res.data as { errors?: Record<string, string> } | undefined)?.errors;
+      // Someone saved first: the answer is the tree as it stands now
+      const data = res.data as { root?: TreeNode | null; errors?: Record<string, string> } | undefined;
+      if (res.error_type === 'Conflict' && data && 'root' in data) {
+        if (!data.root) throw new FlowRefused(_('Someone else deleted this document meanwhile: it cannot be saved'));
+        const merge = mergeTrees(agg.root, data.root);
+        const labels = labelsOf(descriptor);
+        await resolveConflicts(merge, labels);
+        aggregate = { ...agg, root: merge.root };
+        throw new FlowMerged(mergeMessage(merge, labels), { ...data.root.values }, { ...merge.root.values });
+      }
+      const errors = data?.errors;
       throw new FlowRefused(errorText(res, _('Error saving')), res.flow?.patch, errors);
     }
 
