@@ -5,10 +5,13 @@
    * Loads the form descriptor lazily from `get_page` (cached per formId),
    * then renders DataForm. Intended to be pushed onto the stack by DataView.
    *
-   * When the descriptor declares collection nodes the page is an **aggregate**, and
-   * this frame owns its buffer: it reads the whole tree with `load_tree`, hands the
-   * root's values to DataForm, and writes everything back with `save_tree` in one
-   * transaction. Nothing declares that mode — the nodes do (relations.md §16.2).
+   * A form on a table, opened by page id, is a **tree**, and this frame owns its
+   * buffer: it reads the record and the collections the page declares with
+   * `load_tree`, hands the root's values to DataForm, and writes everything back
+   * with `save_tree` in one transaction. Without collections the tree is one
+   * node: one way to read and write a form, and the one the `$` keys of the tree
+   * hooks travel on (a version, say). `db` is left to what is not a form page:
+   * a descriptor built by the caller, a row handed in as data.
    *
    * Props:
    *   formId      string              e.g. 'book_form' — also the page id of the aggregate
@@ -84,10 +87,10 @@
   /** The split areas the page declares beside its form: the record's history, say. */
   let panels = $state<SplitArea[]>([]);
   let loadError  = $state<string | null>(null);
-  /** The buffer, when this page is an aggregate. Null on a plain record form. */
+  /** The buffer, when this page is read and written as a tree. */
   let aggregate  = $state<Aggregate | null>(null);
   /** Known before the tree arrives, so the form waits instead of flashing empty. */
-  let isAggregate = $state(false);
+  let isTree = $state(false);
 
   // Descriptor cache — shared across all DataFormView instances in the session.
   const _cache = new Map<string, FormDescriptor>();
@@ -125,29 +128,28 @@
     await loadAggregate();
   }
 
-  /** Read the whole tree, or open an empty one — only if the page declares nodes. */
+  /** Read the tree, or open an empty one — when the page writes a table. */
   async function loadAggregate() {
-    if (buffer) {
-      // A row frame: the node is the data, and it came from the parent's buffer.
-      // Nothing to read, nothing to write — confirming hands the node back.
-      isAggregate = false;
-      aggregate = null;
-      return;
-    }
-
-    const layout = (descriptor?.layout ?? []) as LayoutNode[];
-    isAggregate = collectionNodes(layout).length > 0;
-    if (!isAggregate) {
+    if (buffer || data !== undefined || !descriptor?.source?.model) {
+      // A row frame (the node is the data, from the parent's buffer), a row
+      // handed in, or a form saved by an endpoint: nothing to read as a tree.
+      isTree = false;
       aggregate = null;
       return;
     }
 
     if (!formId) {
       // The page id *is* the write contract: it is what tells the server which
-      // collections may be written (relations.md §7).
-      loadError = 'A descriptor with collections cannot be written without a page id';
+      // collections may be written (relations.md §7). A descriptor built by the
+      // caller writes its record with `db`, and one with collections cannot.
+      isTree = false;
+      aggregate = null;
+      const layout = (descriptor.layout ?? []) as LayoutNode[];
+      if (collectionNodes(layout).length > 0)
+        loadError = 'A descriptor with collections cannot be written without a page id';
       return;
     }
+    isTree = true;
 
     if (recordId === null || recordId === undefined) {
       // A new aggregate: DataForm still computes the create defaults, and they
@@ -197,7 +199,10 @@
     // Judged: the rules of the root's table may ask before anything is written
     const res = await callJudged('save_tree', serialize(agg), title);
     if (res.cancelled) throw new FlowCancelled();
-    if (res.status !== 'success') throw new FlowRefused(errorText(res, _('Error saving')), res.flow?.patch);
+    if (res.status !== 'success') {
+      const errors = (res.data as { errors?: Record<string, string> } | undefined)?.errors;
+      throw new FlowRefused(errorText(res, _('Error saving')), res.flow?.patch, errors);
+    }
 
     // Re-read from the answer: the database holds defaults and stamps the buffer
     // never saw, and the temporary ids are keys now.
@@ -257,7 +262,7 @@
   <div class="kb-form-view-body">
     {#if loadError}
       <div class="kb-form-view-error">{loadError}</div>
-    {:else if descriptor && (!isAggregate || aggregate)}
+    {:else if descriptor && (!isTree || aggregate)}
       {#snippet form(onEvent?: (name: string, data: unknown) => void)}
         <DataForm
           view={descriptor!}

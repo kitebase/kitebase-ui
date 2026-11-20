@@ -88,7 +88,11 @@ export class FlowCancelled extends Error {
   constructor() { super('cancelled'); }
 }
 
-/** A refusal of the rules, with the values the form takes all the same. */
+/**
+ * A refusal, with the values the form takes all the same and the errors that
+ * belong under a field rather than at the top of the form.
+ */
 export class FlowRefused extends Error {
-  constructor(message: string, public patch?: Record<string, unknown>) { super(message); }
+  constructor(message: string, public patch?: Record<string, unknown>,
+              public errors?: Record<string, string>) { super(message); }
 }

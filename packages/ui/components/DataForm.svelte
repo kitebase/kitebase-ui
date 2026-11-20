@@ -895,6 +895,21 @@
 
   // ── Save / Cancel ──────────────────────────────────────────────────────────
 
+  /** A refusal by field: each error under its field, and at the top only those
+   *  with nowhere else to appear (a password the generated form leaves out). */
+  function showFieldErrors(message: string, fieldErrors: Record<string, string>) {
+    errors = fieldErrors;
+    const shown = new Set(flatFields.map((f) => f.name));
+    const elsewhere = Object.entries(errors).filter(([name]) => !shown.has(name));
+    if (elsewhere.length > 0) {
+      internalStatus = {
+        message: `${message}: ` + elsewhere.map(([name, msg]) => `${name}: ${msg}`).join('; '),
+        type: 'error',
+      };
+    }
+    focusFirstError();
+  }
+
   async function handleSave() {
     if (!validateAll()) {
       // A field of a phase left behind: back there, where it can be fixed
@@ -939,7 +954,8 @@
           // A question dismissed: nothing written, nothing to report, still dirty
           if (e instanceof FlowCancelled) return;
           if (e instanceof FlowRefused && e.patch) draft = { ...draft, ...e.patch };
-          internalStatus = { message: e instanceof Error ? e.message : String(e), type: 'error' };
+          if (e instanceof FlowRefused && e.errors) showFieldErrors(e.message, e.errors);
+          else internalStatus = { message: e instanceof Error ? e.message : String(e), type: 'error' };
           return;
         }
         original = { ...draft };
@@ -954,19 +970,7 @@
         if (res.flow?.patch) draft = { ...draft, ...res.flow.patch };
         const errData = res.data as Record<string, unknown> | undefined;
         if (errData?.errors) {
-          errors = errData.errors as Record<string, string>;
-          // An error on a field this form does not show (a password the
-          // generated form leaves out) has nowhere to appear but here.
-          const shown = new Set(flatFields.map((f) => f.name));
-          const elsewhere = Object.entries(errors).filter(([name]) => !shown.has(name));
-          if (elsewhere.length > 0) {
-            internalStatus = {
-              message: `${errorText(res, _('Error saving'))}: `
-                + elsewhere.map(([name, msg]) => `${name}: ${msg}`).join('; '),
-              type: 'error',
-            };
-          }
-          focusFirstError();
+          showFieldErrors(errorText(res, _('Error saving')), errData.errors as Record<string, string>);
         } else {
           internalStatus = { message: errorText(res, _('Error saving')), type: 'error' };
         }
