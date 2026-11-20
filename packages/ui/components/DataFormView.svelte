@@ -21,7 +21,7 @@
    *   title       string              shown in header bar
    *   onSaved     (savedData, {model}) => void  called after successful save with merged record (before pop); `model` is the form's table, none for a form saved by an endpoint
    */
-  import { getContext } from 'svelte';
+  import { getContext, onDestroy } from 'svelte';
   import { _ } from '../i18n';
   import { stack as globalStack } from '$kitebase/stack/stack.svelte';
   import type { StackInstance } from '$kitebase/stack/stack.svelte';
@@ -29,6 +29,9 @@
   import { errorText } from '$kitebase/api/envelope';
   import DataForm from './DataForm.svelte';
   import PanelRenderer from './PanelRenderer.svelte';
+  import PluginComponent from './PluginComponent.svelte';
+  import { getPluginLoader } from '$kitebase/plugins/context';
+  import { serverConfig } from '../api/serverConfig.svelte';
   import { callJudged, presentOutcome, FlowCancelled, FlowMerged, FlowRefused } from './flow';
   import { labelsOf, mergeMessage, resolveConflicts } from './conflict';
   import { applyResult } from './resultAction';
@@ -40,6 +43,7 @@
     type Aggregate, type DraftNode, type TreeNode,
   } from './aggregate';
   import type { FormDescriptor, LayoutNode } from './dataform.types';
+  import { formKey, lifecycle, type FormRef } from '../lifecycle';
 
   const stack = getContext<StackInstance>('kb:stack') ?? globalStack;
 
@@ -93,6 +97,41 @@
   let aggregate  = $state<Aggregate | null>(null);
   /** Known before the tree arrives, so the form waits instead of flashing empty. */
   let isTree = $state(false);
+
+  /**
+   * The form as the lifecycle names it: the root of a tree, once it is shown.
+   * A row of someone else's buffer, or a form that writes no table, is not
+   * one: the frames it opens and closes are what tells of its activity.
+   */
+  const key = formKey();
+  let opened = false;
+  function formRef(): FormRef {
+    const root = aggregate!.root;
+    return { key, page: formId!, model: descriptor!.source!.model!,
+             id: root.op === 'create' ? null : root.id };
+  }
+  let dirty = $state(false);
+  function relay(name: string, data: unknown) {
+    if (!opened) return;
+    if (name === 'field_change') lifecycle.emit('form:change', formRef());
+    else if (name === 'form_dirty') {
+      dirty = (data as { dirty: boolean }).dirty;
+      lifecycle.emit('form:dirty', { ...formRef(), dirty });
+    }
+  }
+
+  /**
+   * What the plugins mount on every form of a table (endpoint_db._form_areas),
+   * on the root of a tree only. Each gets the form, the `$` keys the tree hooks
+   * put on its root, and whether it is dirty; the rest it hears on `lifecycle`.
+   */
+  const pluginLoader = getPluginLoader();
+  let topArea = $derived(isTree && aggregate && !buffer && pluginLoader
+    ? serverConfig.formAreas.top ?? [] : []);
+  let rootMeta = $derived(aggregate
+    ? Object.fromEntries(Object.entries(aggregate.root).filter(([k]) => k.startsWith('$')))
+    : {});
+  onDestroy(() => { if (opened) lifecycle.emit('form:close', formRef()); });
 
   // Descriptor cache — shared across all DataFormView instances in the session.
   const _cache = new Map<string, FormDescriptor>();
@@ -157,6 +196,8 @@
       // A new aggregate: DataForm still computes the create defaults, and they
       // reach the buffer as the draft it hands back.
       aggregate = draft ? draftAggregate(formId, draft) : newAggregate(formId);
+      opened = true;
+      lifecycle.emit('form:open', formRef());
       return;
     }
 
@@ -164,6 +205,8 @@
       const res = await api.endpoint('load_tree', { page: formId, id: recordId });
       if (res.status === 'success') {
         aggregate = loadedAggregate(formId, res.data as TreeNode);
+        opened = true;
+        lifecycle.emit('form:open', formRef());
       } else {
         loadError = errorText(res, `Cannot load record ${recordId}`);
       }
@@ -220,6 +263,7 @@
     // never saw, and the temporary ids are keys now.
     const saved = res.data as { root: TreeNode };
     aggregate = loadedAggregate(page, saved.root);
+    lifecycle.emit('form:saved', formRef());
     return { values: { ...aggregate.root.values }, flow: res.flow };
   }
 
@@ -270,6 +314,21 @@
     {/if}
   </div>
 
+  {#if topArea.length}
+    <div class="kb-form-view-area">
+      {#each topArea as item (item.component)}
+        <PluginComponent
+          loader={pluginLoader!}
+          componentId={item.component}
+          {...item.props}
+          form={formRef()}
+          meta={rootMeta}
+          {dirty}
+        />
+      {/each}
+    </div>
+  {/if}
+
   <!-- Body -->
   <div class="kb-form-view-body">
     {#if loadError}
@@ -289,7 +348,7 @@
           defaults={draft && !aggregate ? { ...(defaults ?? {}), ...(draft.values ?? {}) } : defaults}
           onSave={handleSave}
           onCancel={handleCancel}
-          {onEvent}
+          onEvent={(name, data) => { relay(name, data); onEvent?.(name, data); }}
         />
       {/snippet}
       <!-- A row of someone else's buffer is a form alone: the areas are the page's -->
@@ -351,6 +410,16 @@
     font-weight: 600;
     color: var(--kb-text);
     margin: 0;
+  }
+
+  .kb-form-view-area {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+  }
+
+  .kb-form-view-area:empty {
+    display: none;
   }
 
   .kb-form-view-body {

@@ -13,6 +13,7 @@
  */
 
 import { writable } from 'svelte/store';
+import { lifecycle } from '../lifecycle';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyComponent = any;
@@ -79,11 +80,17 @@ export function createStack() {
     ): string {
       const id = frameId();
       const opener = currentFocus();
-      update((pages) => [...pages, { id, component, props, onReturn, opener }]);
+      let depth = 0;
+      update((pages) => {
+        depth = pages.length + 1;
+        return [...pages, { id, component, props, onReturn, opener }];
+      });
+      lifecycle.emit('stack:push', { frame: id, depth });
       return id;
     },
 
     pop(returnData?: unknown): void {
+      let gone = null as { frame: string; depth: number } | null;
       update((pages) => {
         if (pages.length === 0) return pages;
         const next = [...pages];
@@ -91,8 +98,10 @@ export function createStack() {
         const leaving = currentFocus();
         popped?.onReturn?.(returnData);
         restoreFocus(popped?.opener, leaving);
+        if (popped) gone = { frame: popped.id, depth: next.length };
         return next;
       });
+      if (gone) lifecycle.emit('stack:pop', gone);
     },
 
     clear(): void {

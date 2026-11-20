@@ -220,6 +220,13 @@ export interface DataviewConfig {
   page_size_by_type?: Record<string, number | null>;
 }
 
+/** A plugin component mounted in an area of every form (endpoint_db._form_areas). */
+export interface FormAreaItem {
+  component: string;
+  props: Record<string, unknown>;
+}
+export type FormAreas = Record<string, FormAreaItem[]>;
+
 export interface ServerConfigData {
   dataview?: DataviewConfig;
   locale?: string;
@@ -294,6 +301,7 @@ class ServerConfigStore {
   config      = $state<ServerConfigData>({});
   tables      = $state<TableRegistry>({});
   schemas     = $state<SchemaRegistry>({});
+  formAreas   = $state<FormAreas>({});
   loaded      = $state(false);
   loading     = $state(false);
   error       = $state<string | null>(null);
@@ -314,7 +322,7 @@ class ServerConfigStore {
     this.error   = null;
 
     try {
-      const res = await api.endpoint<{ config: ServerConfigData; types: TypeRegistry; tables: TableRegistry; schemas: SchemaRegistry }>(
+      const res = await api.endpoint<{ config: ServerConfigData; types: TypeRegistry; tables: TableRegistry; schemas: SchemaRegistry; form_areas?: FormAreas }>(
         'get_server_config',
         { include_builtin: includeBuiltin },
       );
@@ -324,6 +332,7 @@ class ServerConfigStore {
         this.types       = res.data.types   ?? {};
         this.tables      = res.data.tables  ?? {};
         this.schemas     = res.data.schemas ?? {};
+        this.formAreas   = res.data.form_areas ?? {};
         this.loaded      = true;
         this.withBuiltin = includeBuiltin;
       } else {
@@ -354,6 +363,7 @@ class ServerConfigStore {
     this.config  = {};
     this.tables  = {};
     this.schemas = {};
+    this.formAreas = {};
     this.loaded  = false;
     this.error   = null;
   }

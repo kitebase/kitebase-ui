@@ -129,3 +129,21 @@ describe('focus across a frame', () => {
     expect(doc.activeElement).toBe(body);
   });
 });
+
+describe('telling who listens', () => {
+  it('says when a frame opens and when it closes, with the depth it leaves', async () => {
+    const { lifecycle } = await import('../lifecycle');
+    const seen: unknown[] = [];
+    const offPush = lifecycle.on('stack:push', (e) => seen.push(['push', e.depth]));
+    const offPop = lifecycle.on('stack:pop', (e) => seen.push(['pop', e.depth]));
+    const s = createStack();
+    const id = s.push({});
+    s.push({});
+    s.pop();
+    s.pop();
+    s.pop();
+    offPush(); offPop();
+    expect(seen).toEqual([['push', 1], ['push', 2], ['pop', 1], ['pop', 0]]);
+    expect(typeof id).toBe('string');
+  });
+});

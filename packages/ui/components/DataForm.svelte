@@ -12,7 +12,7 @@
    *   trigger       object             trigger payload from PanelRenderer
    *   status        FormStatus         message shown in toolbar (parent-controlled)
    *   toolbarExtra  Snippet            custom content injected in the toolbar right area
-   *   onEvent       fn                 unified event emitter (form_load, form_save, …)
+   *   onEvent       fn                 unified event emitter (form_load, field_change, form_dirty, form_save, …)
    *   onSave        fn                 called after save in mode 4 (no backend call)
    *   onCancel      fn                 called after cancel / discard
    */
@@ -313,6 +313,15 @@
     || (buffer ? isDirty(buffer.node) : false)
   );
 
+  // Its turns, for whoever holds the form: the first change, and clean again
+  let wasDirty = false;
+  $effect(() => {
+    const now = dirty;
+    if (now === wasDirty) return;
+    wasDirty = now;
+    untrack(() => onEvent?.('form_dirty', { dirty: now }));
+  });
+
   // Trigger not yet arrived for a trigger-dependent async form
   let waitingForTrigger = $derived(isAsyncMode && hasTriggerDeps && trigger === undefined);
 
@@ -450,6 +459,7 @@
     if (isBlank(value) && isBlank(draft[name])) return;
     draft[name] = value;
     edited.add(name);
+    onEvent?.('field_change', { field: name, value, record: { ...draft } });
   }
 
   function leaveField(name: string) {
