@@ -30,7 +30,7 @@
   import DataFormView from './DataFormView.svelte';
   import { callJudged, presentOutcome } from './flow';
   import type { ColumnDef } from '$kitebase/tabulator/KitebaseTable';
-  import { api } from '$kitebase/api/client';
+  import { api, COMMAND_TIMEOUT } from '$kitebase/api/client';
   import { errorText } from '$kitebase/api/envelope';
   import { serverConfig, resolveFormatter as resolveFormatterByType, resolveAlign } from '$kitebase/api/serverConfig.svelte';
   import type { SchemaFieldInfo } from '$kitebase/api/serverConfig.svelte';
@@ -1261,11 +1261,16 @@
   // button is enabled, the server decides what to make of the rest. The answer
   // goes through `applyResult` like every other operation's.
 
+  // A command runs once at a time: a second click or key while it works
+  // would send it again. The work says where it is meanwhile (jobs).
+  let runningCommands = $state<Set<string>>(new Set());
+
   async function handleNavCommand(cmd: CommandItem) {
     if (!cmd.endpoint) {
       console.error(`[DataView] Command "${cmd.id}" names no endpoint.`);
       return;
     }
+    if (runningCommands.has(cmd.id)) return;
     const activeId = _activeRowData ? (_activeRowData as any)[pkField] : undefined;
     const selectedIds = tableRef?.getSelectedData().map((r: any) => r[pkField]) ?? [];
     // Rows in a buffer: the command works on the document, not on the
@@ -1291,8 +1296,9 @@
     // only for a command that declares it wants them (a print of "what you see").
     if (cmd.rows === 'view') payload.view_ids = (tableRef?.getActiveData() ?? []).map((r: any) => r[pkField]);
 
+    runningCommands = new Set([...runningCommands, cmd.id]);
     try {
-      const res = await api.endpoint(cmd.endpoint, payload);
+      const res = await api.endpoint(cmd.endpoint, payload, { timeout: COMMAND_TIMEOUT });
       await applyResult(res, {
         title: commandLabel(cmd),
         stack,
@@ -1304,6 +1310,8 @@
       });
     } catch (e) {
       await msgbox.error(e instanceof Error ? e.message : String(e), undefined, commandLabel(cmd));
+    } finally {
+      runningCommands = new Set([...runningCommands].filter(id => id !== cmd.id));
     }
   }
 
@@ -1466,6 +1474,7 @@
       onEdit={handleNavEdit}
       onDelete={handleNavDelete}
       onCommand={handleNavCommand}
+      {runningCommands}
       onToggleFilter={toggleFilter}
       onToggleSelect={toggleSelect}
       onExport={handleExport}

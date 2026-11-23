@@ -43,6 +43,7 @@
     filteredCount = null as number | null,
     totalCount = null as number | null,
     selectedCount = 0,
+    runningCommands = new Set<string>(),
     activeRowId = null as unknown,
     // Actions
     onAdd = undefined as (() => void) | undefined,
@@ -85,6 +86,8 @@
     filteredCount?: number | null;
     totalCount?: number | null;
     selectedCount?: number;
+    /** The commands at work now: not sent again until they answer. */
+    runningCommands?: Set<string>;
     activeRowId?: unknown;
     onAdd?: () => void;
     onEdit?: () => void;
@@ -146,6 +149,7 @@
   let commandsOpen = $state(false);
 
   function cmdDisabled(cmd: CommandItem): boolean {
+    if (runningCommands.has(cmd.id)) return true;
     return cmd.scope === 'row' ? !hasRow : cmd.scope === 'selection' ? !hasSel : false;
   }
 

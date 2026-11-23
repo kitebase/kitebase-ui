@@ -40,7 +40,7 @@
  * `endpoint` call is how a server-driven popup works without the client
  * knowing what any entry does.
  */
-import { api } from '../api/client';
+import { api, COMMAND_TIMEOUT } from '../api/client';
 import { errorText } from '../api/envelope';
 import { msgbox } from './msgbox.svelte';
 import { _ } from '../i18n';
@@ -133,7 +133,9 @@ async function applyBody(body: Payload, ctx: ResultContext, fallback?: string): 
       if (typeof body.op !== 'string') return;
       const confirmText = typeof body.confirm === 'string' ? body.confirm : null;
       if (confirmText && !(await msgbox.confirm(confirmText, ctx.title))) return;
-      const res = await api.endpoint(body.op, (body.params ?? {}) as Payload);
+      // The follow-up of a command is a command: it may work as long
+      const res = await api.endpoint(body.op, (body.params ?? {}) as Payload,
+                                     { timeout: COMMAND_TIMEOUT });
       await applyResult(res, ctx);
       return;
     }

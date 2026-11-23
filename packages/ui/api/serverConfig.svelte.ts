@@ -220,7 +220,8 @@ export interface DataviewConfig {
   page_size_by_type?: Record<string, number | null>;
 }
 
-/** A plugin component mounted in an area of every form (endpoint_db._form_areas). */
+/** A plugin component mounted in an area of a frame: every form, the chrome
+ *  (endpoint_db._plugin_areas). */
 export interface FormAreaItem {
   component: string;
   props: Record<string, unknown>;
@@ -302,6 +303,7 @@ class ServerConfigStore {
   tables      = $state<TableRegistry>({});
   schemas     = $state<SchemaRegistry>({});
   formAreas   = $state<FormAreas>({});
+  chromeAreas = $state<FormAreas>({});
   loaded      = $state(false);
   loading     = $state(false);
   error       = $state<string | null>(null);
@@ -322,7 +324,7 @@ class ServerConfigStore {
     this.error   = null;
 
     try {
-      const res = await api.endpoint<{ config: ServerConfigData; types: TypeRegistry; tables: TableRegistry; schemas: SchemaRegistry; form_areas?: FormAreas }>(
+      const res = await api.endpoint<{ config: ServerConfigData; types: TypeRegistry; tables: TableRegistry; schemas: SchemaRegistry; form_areas?: FormAreas; chrome_areas?: FormAreas }>(
         'get_server_config',
         { include_builtin: includeBuiltin },
       );
@@ -333,6 +335,7 @@ class ServerConfigStore {
         this.tables      = res.data.tables  ?? {};
         this.schemas     = res.data.schemas ?? {};
         this.formAreas   = res.data.form_areas ?? {};
+        this.chromeAreas = res.data.chrome_areas ?? {};
         this.loaded      = true;
         this.withBuiltin = includeBuiltin;
       } else {
@@ -364,6 +367,7 @@ class ServerConfigStore {
     this.tables  = {};
     this.schemas = {};
     this.formAreas = {};
+    this.chromeAreas = {};
     this.loaded  = false;
     this.error   = null;
   }

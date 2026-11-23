@@ -13,6 +13,7 @@ import axios from 'axios';
 import type { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { config } from '../config';
 import { statusBar } from '../status/statusBar.svelte';
+import { activity } from './activity.svelte';
 import type { LoginCredentials, AuthResponse, APIResponse, ContextUpdate } from './types';
 import type { ClientInfo } from '../auth/host';
 import { filenameOf } from './disposition';
@@ -27,6 +28,19 @@ const DOWNLOAD_TIMEOUT = 120000;
 // session: that is an answer for whoever asked, not an expired session.
 const HOST_TOKEN_ROUTE = '/auth/token';
 const AUTH_ROUTES = ['/auth/login', HOST_TOKEN_ROUTE];
+
+/** How a call goes, when not as every other. */
+export interface EndpointOptions {
+  /** A call the client makes by itself (a poll): not counted as the user
+   *  waiting, and it leaves the status line alone. */
+  background?: boolean;
+  /** Milliseconds before giving up, for a call that is long by design (a
+   *  command: the work says where it is while it runs). */
+  timeout?: number;
+}
+
+/** A command may work for minutes, saying where it is: the client waits. */
+export const COMMAND_TIMEOUT = 15 * 60 * 1000;
 
 class KitebaseAPI {
   private client: AxiosInstance;
@@ -188,19 +202,25 @@ class KitebaseAPI {
   //   api.endpoint('query', { format: 'dict', query: { table: 'User', ... } })
   //   api.endpoint('get_server_config', {})
 
-  async endpoint<T>(operation: string, data: unknown = {}): Promise<APIResponse<T>> {
+  async endpoint<T>(operation: string, data: unknown = {},
+                    options: EndpointOptions = {}): Promise<APIResponse<T>> {
+    const counted = !options.background;
+    if (counted) activity.begin();
     try {
       const res = await this.client.post<any>(
         `/${config.api.endpointPrefix}/${operation}`,
-        data
+        data,
+        options.timeout ? { timeout: options.timeout } : undefined,
       );
       const d = res.data;
       // Ambient status line: the server may carry a standard `$message`; when it
       // doesn't, a prior server message is stale and gets dropped. Client
       // messages persist across endpoint calls (statusBar owns that rule).
-      const sm = d?.['$message'];
-      if (sm?.text) statusBar.fromServer(sm);
-      else statusBar.clearServer();
+      if (counted) {
+        const sm = d?.['$message'];
+        if (sm?.text) statusBar.fromServer(sm);
+        else statusBar.clearServer();
+      }
       if (d?.status === 'success') {
         // A success may carry a line of its own — an endpoint called from a
         // button reports what it did. Distinct from `$message`, which is the
@@ -212,6 +232,8 @@ class KitebaseAPI {
       // A refusal is a 4xx or a 5xx, so it lands here: its body is the same
       // envelope, field errors and request id included.
       return errorOf<T>(err.response?.data, 'Request failed');
+    } finally {
+      if (counted) activity.end();
     }
   }
 

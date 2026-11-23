@@ -2,6 +2,9 @@
   import { setContext, type Snippet } from 'svelte';
   import { blueprints } from './blueprints';
   import { registry } from './registry';
+  import { serverConfig } from '$kitebase/api/serverConfig.svelte';
+  import { getPluginLoader } from '$kitebase/plugins/context';
+  import PluginComponent from '$kitebase/components/PluginComponent.svelte';
   import type { AreaContent, BarContent, CompItem, Composition } from './types';
 
   interface Props {
@@ -27,6 +30,11 @@
   const areas = $derived(composition?.areas ?? bp.defaults.areas);
   const BlueprintComponent = $derived(bp.component);
 
+  // What the plugins put beside the status line (`chrome_areas.status` in
+  // their YAML): it follows the `status-area`, wherever the composition puts it.
+  const pluginLoader = getPluginLoader();
+  const statusExtras = $derived(pluginLoader ? serverConfig.chromeAreas.status ?? [] : []);
+
   function isBar(c: AreaContent): c is BarContent {
     return !Array.isArray(c);
   }
@@ -36,6 +44,11 @@
   {@const Comp = registry[item.component]}
   {#if Comp}
     <Comp {...(item.props ?? {})} />
+    {#if item.component === 'status-area'}
+      {#each statusExtras as extra (extra.component)}
+        <PluginComponent loader={pluginLoader!} componentId={extra.component} {...extra.props} />
+      {/each}
+    {/if}
   {:else}
     <span class="kb-chrome-missing">?{item.component}</span>
   {/if}

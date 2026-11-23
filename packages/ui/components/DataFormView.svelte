@@ -121,7 +121,7 @@
   }
 
   /**
-   * What the plugins mount on every form of a table (endpoint_db._form_areas),
+   * What the plugins mount on every form of a table (endpoint_db._plugin_areas),
    * on the root of a tree only. Each gets the form, the `$` keys the tree hooks
    * put on its root, and whether it is dirty; the rest it hears on `lifecycle`.
    */
