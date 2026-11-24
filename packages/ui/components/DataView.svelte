@@ -16,6 +16,7 @@
    *   data     any[]                     static data (source: prop)
    *   onEvent  (name, data) => void      unified event emitter (row_click, data_load, …)
    */
+  import { commandApplies } from './commandWhen';
   import { untrack, getContext } from 'svelte';
   import { _, _t } from '../i18n';
   import { visibleButtons } from './navigator.visibility';
@@ -1329,6 +1330,7 @@
     if (!cmd) return;
     if (cmd.scope === 'row' && _activeRowData == null) return;
     if (cmd.scope === 'selection' && selectedCount === 0) return;
+    if (!commandApplies(cmd.when, _activeRowData)) return;
     e.preventDefault();
     e.stopPropagation();
     handleNavCommand(cmd);
@@ -1469,6 +1471,7 @@
       {totalCount}
       {selectedCount}
       activeRowId={_activeRowData ? (_activeRowData as any)[pkField] : null}
+      activeRow={_activeRowData}
       onAccept={handleNavAccept}
       onCancel={handleNavLookupCancel}
       onAdd={handleNavAdd}

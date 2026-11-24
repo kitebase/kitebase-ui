@@ -81,6 +81,7 @@ registerTranslations('it', {
   'Cancel':                   'Annulla',
   'Cancel (Esc)':             'Annulla (Esc)',
   'Commands':                 'Comandi',
+  'No command for this row':  'Nessun comando per questa riga',
 
   // dataview navigator
   'Add (Ins)':                'Aggiungi (Ins)',

@@ -1,3 +1,4 @@
+import type { When } from './commandWhen';
 /**
  * dataview.types.ts — shared type definitions for DataView and related components.
  *
@@ -86,6 +87,8 @@ export interface CommandItem {
   /** `view`: the call also carries the rows on screen, in order, as `view_ids`. */
   rows?: 'view';
   params?: Record<string, unknown>;  // sent along with the view's context
+  /** Shows the command only for a row that satisfies it (`commandWhen.ts`). */
+  when?: When;
   [key: string]: unknown;
 }
 

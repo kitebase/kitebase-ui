@@ -13,6 +13,7 @@
    * Auto-items (load_more, commands) obey their own condition AND hide list.
    */
 
+  import { commandApplies } from './commandWhen';
   import {
     Plus, Pencil, Trash2, Check, X,
     Funnel, Search,
@@ -45,6 +46,8 @@
     selectedCount = 0,
     runningCommands = new Set<string>(),
     activeRowId = null as unknown,
+    // The row in hand, as loaded: what a command's `when` reads
+    activeRow = null as Record<string, unknown> | null,
     // Actions
     onAdd = undefined as (() => void) | undefined,
     onEdit = undefined as (() => void) | undefined,
@@ -89,6 +92,7 @@
     /** The commands at work now: not sent again until they answer. */
     runningCommands?: Set<string>;
     activeRowId?: unknown;
+    activeRow?: Record<string, unknown> | null;
     onAdd?: () => void;
     onEdit?: () => void;
     onDelete?: () => void;
@@ -144,7 +148,10 @@
   // command with `toolbar: true` is also a button of its own. The scope only
   // says when a command can run: what it does is the server's.
 
-  const commands = $derived(config?.commands ?? []);
+  // A command with `when` shows only for a row that satisfies it; the menu
+  // stays where it is, so it does not come and go as the cursor moves
+  const declared = $derived(config?.commands ?? []);
+  const commands = $derived(declared.filter(c => commandApplies(c.when, activeRow)));
   const toolbarCmds = $derived(commands.filter(c => c.toolbar));
   let commandsOpen = $state(false);
 
@@ -266,7 +273,7 @@
     {/if}
 
     <!-- Commands menu (auto — visible when the view declares any) -->
-    {#if commands.length > 0}
+    {#if declared.length > 0}
       <div class="kb-nav-loadmore-wrap">
         <button
           class="kb-nav-btn"
@@ -282,6 +289,10 @@
                 disabled={cmdDisabled(cmd)}
                 onclick={() => { commandsOpen = false; onCommand?.(cmd); }}>
                 {cmdLabel(cmd)}
+              </button>
+            {:else}
+              <button class="kb-nav-menu-item" role="menuitem" disabled>
+                {_('No command for this row')}
               </button>
             {/each}
           </div>
