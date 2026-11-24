@@ -11,9 +11,17 @@ export const CONTEXT_TOKENS: Record<string, () => unknown> = {
   user_id: () => authStore.user?.id,
 };
 
-/** A value that is a known token, resolved; any other value as it is. */
+/**
+ * A value that is a known token, resolved; any other value as it is.
+ * `$ctx.<name>` is a field of the login context, as a row condition on the
+ * server reads it (`$ctx.partner_id`, which a plugin puts in every token):
+ * null when the context does not carry it.
+ */
 export function resolveContextToken(value: unknown): unknown {
   if (typeof value !== 'string' || !value.startsWith('$')) return value;
+  if (value.startsWith('$ctx.')) {
+    return (authStore.user as Record<string, unknown> | null)?.[value.slice(5)] ?? null;
+  }
   const getter = CONTEXT_TOKENS[value.slice(1)];
   return getter ? getter() : value;
 }
