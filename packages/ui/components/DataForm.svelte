@@ -28,6 +28,7 @@
   import WidgetNumber from './widgets/WidgetNumber.svelte';
   import { numberShape, numberWidthCh } from './widgets/number';
   import WidgetDate from './widgets/WidgetDate.svelte';
+  import WidgetTime from './widgets/WidgetTime.svelte';
   import WidgetBoolean from './widgets/WidgetBoolean.svelte';
   import WidgetCombobox from './widgets/WidgetCombobox.svelte';
   import WidgetFKCombobox from './widgets/WidgetFKCombobox.svelte';
@@ -50,6 +51,7 @@
   import { msgbox } from './msgbox.svelte';
   import { callJudged, FlowCancelled, FlowMerged, FlowRefused } from './flow';
   import { applyResult } from './resultAction';
+  import { onChangeKey, onChangeParams, onChangePatch } from './onChange';
   import type { Flow } from '../api/types';
   import { resolveIcon } from './icons';
   import { stack as globalStack } from '$kitebase/stack/stack.svelte';
@@ -413,6 +415,13 @@
     return 'text';
   }
 
+  /** The widget of the column's own type, whatever the field declares: a
+   *  `time` widget on a DateTime column hands back an instant. */
+  function typeWidget(field: FormField): string | undefined {
+    const type = (resolvedSchema?.[field.name]?.type ?? field.type) as string | undefined;
+    return type ? (serverConfig.resolveWidget(type) ?? type.toLowerCase()) : undefined;
+  }
+
   // ── Field help ─────────────────────────────────────────────────────────────
   // One open at a time, by field name. F1 on a field opens its help, as in
   // every desktop program; the keys of whatever widget the field has bubble
@@ -464,6 +473,33 @@
 
   function leaveField(name: string) {
     if (edited.has(name) || name in errors) validateField(name);
+    runOnChange(name);
+  }
+
+  // ── on_change: the server recomputes other fields (onChange.ts) ───────────
+  // Leaving a field with a value it has not asked about yet; the answer of an
+  // older call that arrives after a newer one is dropped.
+  const onChangeAsked = new Map<string, string>();
+  let onChangeSeq = 0;
+
+  async function runOnChange(name: string) {
+    const field = flatFields.find((f) => f.name === name);
+    const onChange = field?.on_change;
+    if (!onChange || !edited.has(name) || name in errors) return;
+    const key = onChangeKey(draft[name]);
+    if (onChangeAsked.get(name) === key) return;
+    onChangeAsked.set(name, key);
+    const seq = ++onChangeSeq;
+    const res = await api.endpoint(onChange.endpoint, onChangeParams(name, onChange, draft));
+    if (seq !== onChangeSeq) return;
+    if (res.status !== 'success') {
+      internalStatus = { message: errorText(res, _('Error')), type: 'error' };
+      return;
+    }
+    for (const [target, value] of Object.entries(onChangePatch(onChange, res.data))) {
+      patch(target, value);
+      if (target in errors) validateField(target);
+    }
   }
 
   // What a widget holds that is not a value yet (JSON that does not parse):
@@ -1453,12 +1489,13 @@
         {field}
       />
     {:else if widgetType === 'time'}
-      <WidgetText
+      <WidgetTime
+        withDate={typeWidget(field) === 'datetime'}
         value={draft[field.name]}
         onchange={(v) => patch(field.name, v)}
         onblur={() => leaveField(field.name)}
+        oninvalid={(m) => widgetInvalid(field.name, m)}
         readonly={fieldReadonly}
-        type="time"
         {field}
       />
     {:else if widgetType === 'boolean'}
@@ -1618,7 +1655,7 @@
           agg={buffer.agg}
           parent={buffer.node}
           record={draft}
-          readonly={!isEditable}
+          readonly={!isEditable || !!(node as CollectionNode).readonly}
           fallbackLabel={groupLabel}
           onCommand={async (endpoint, scope, title) => { await runProposal(endpoint, scope, title); }}
         />

@@ -31,10 +31,25 @@ export interface FormField {
    * goes out with a save.
    */
   transient?: boolean;
+  /**
+   * What leaving the field with a new value asks of the server: `endpoint` is
+   * called with the fields in `pass`, and the fields in `apply` take the
+   * values it answers (`onChange.ts`).
+   */
+  on_change?: OnChange;
   // Layout
   same_row?: boolean;        // true → joins the previous field's row (inline)
   width?: number | string;   // px (number) or "30%" (string); absent → flex-1
   [key: string]: unknown;
+}
+
+/** A recomputation the server makes when a field changes (`FormField.on_change`). */
+export interface OnChange {
+  endpoint: string;
+  /** The fields of the draft sent, by name; the changed one when absent. */
+  pass?: string[];
+  /** The fields that take the values answered; every one answered when absent. */
+  apply?: string[];
 }
 
 // Row grouping: fields on the same line (Phase 2)
@@ -175,6 +190,11 @@ export interface CollectionNode {
   view?: Record<string, unknown>;
   /** Grid height: a CSS length, or `fill` to take what the container gives. */
   height?: string;
+  /**
+   * Shown and never written from here: rows the form only lists (the hours of
+   * a task, written in their own form, whose rules a tree does not judge yet).
+   */
+  readonly?: boolean;
 }
 
 /**

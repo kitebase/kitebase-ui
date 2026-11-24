@@ -8,6 +8,7 @@
    * The draft gets the number as it is typed, so a save from the keyboard
    * never misses the last digits. `currency` shows the cents, `percent` a `%`.
    */
+  import { untrack } from 'svelte';
   import type { FormField } from '../dataform.types';
   import { dispatchEnter } from './widget.svelte.ts';
   import { numberShape, parseNumber, typeable, roundTo, formatNumber, editText } from './number';
@@ -35,12 +36,24 @@
   // What the box holds while typing; outside the field, the formatted value
   let focused = $state(false);
   let typed = $state('');
+  // Whether the person typed since the field took the focus
+  let touched = false;
   const shown = $derived(focused ? typed : formatNumber(numeric, shape));
 
   function handleFocus() {
     typed = editText(numeric, shape);
+    touched = false;
     focused = true;
   }
+
+  // A value set from outside while the field has the focus (a recomputation
+  // the form asked the server for, arriving after Tab moved here) is shown
+  // until the person types: the box must not keep, and then hand back, the
+  // empty text it had on entering.
+  $effect(() => {
+    const n = numeric;
+    if (untrack(() => focused) && !touched) typed = editText(n, shape);
+  });
 
   // Only a value that changed is handed on: passing through an empty field
   // must not turn "never set" into null and make the form look edited
@@ -49,6 +62,7 @@
   }
 
   function handleInput(e: Event) {
+    touched = true;
     const input = e.currentTarget as HTMLInputElement;
     const clean = typeable(input.value, shape.scale === 0);
     if (clean !== input.value) input.value = clean;   // what cannot make a number is refused
