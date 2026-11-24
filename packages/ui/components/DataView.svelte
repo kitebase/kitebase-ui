@@ -327,13 +327,14 @@
 
   // The values `within` takes: the rows of the table its column points to, in
   // their `sequence` when they have one (the order their users gave them),
-  // else by name. The first is the board's until the user picks another.
+  // else by name, narrowed by the view's `kanban.within_filters` (the open
+  // projects). The first is the board's until the user picks another.
   $effect(() => {
     const within = isBoard ? boardState?.within : undefined;
     const target = within ? sourceColumn(within)?.foreign_key?.target : undefined;
     if (!target) { boardOptions = []; return; }
     const hasSequence = serverConfig.tables[target]?.columns.some((c) => c.name === 'sequence');
-    tableValues(target, hasSequence ? ['sequence'] : []).then((rows) => {
+    tableValues(target, hasSequence ? ['sequence'] : [], view.kanban?.within_filters).then((rows) => {
       boardOptions = rows.map((r) => ({ value: r.$value, label: r.$label as string }));
       const current = untrack(() => boardWithin);
       if (!boardOptions.some((o) => String(o.value) === String(current))) {

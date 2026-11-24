@@ -144,8 +144,11 @@ export interface ViewDescriptor {
    * `folded`, the values whose columns start folded, when the values are the
    * code's own (`choices`). Values that are rows of a table say it themselves,
    * in the column the table's `state` names as `folded`.
+   * `within_filters` narrows the values offered above a board that shows one
+   * value of `within` at a time (`{state: [in, [planned, active]]}`): the
+   * same conditions as a lookup's `filters`, on the table `within` points to.
    */
-  kanban?: { sum?: string; folded?: unknown[] };
+  kanban?: { sum?: string; folded?: unknown[]; within_filters?: Record<string, unknown> };
   data_schema?: string;  // schema ID from plugin schemas: section
   [key: string]: unknown;
 }
