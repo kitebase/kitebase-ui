@@ -27,6 +27,9 @@
     op?: string;
     params?: Record<string, unknown>;
     confirm?: string;
+    /** action: url — the address, and `_blank` to open it in a new tab */
+    url?: string;
+    target?: string;
     children?: MenuNode[];
     [key: string]: unknown;
   }
@@ -82,10 +85,22 @@
 
   async function open(node: MenuNode) {
     if (node.action === 'endpoint') return runEndpoint(node);
+    if (node.action === 'url') return openUrl(node);
     if (node.action !== 'stack_push' || !node.panel) return;
     activeId = node.id;
     stack.clear();
     stack.push(PanelPage, { panelId: node.panel });
+  }
+
+  /**
+   * `action: url` — a link out of the application: another page of the same
+   * site (a dashboard next to the admin) or another site. In this tab by
+   * default, in a new one with `target: _blank`.
+   */
+  function openUrl(node: MenuNode) {
+    if (typeof node.url !== 'string' || !node.url) return;
+    if (node.target === '_blank') window.open(node.url, '_blank', 'noopener');
+    else window.location.assign(node.url);
   }
 
   /**
